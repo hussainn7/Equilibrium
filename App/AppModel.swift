@@ -286,25 +286,53 @@ final class AppModel {
 
         let client = HealthAPIClient(auth: auth, config: oauthConfig)
         let engine = SyncEngine(client: client)
-        let outcome = await engine.sync(
+        
+        let dailyOutcome = await engine.syncDailyMetrics(
             existingDays: store.days,
-            daysBack: daysBack,
-            hrDaysBack: hrDaysBack
+            daysBack: daysBack
         ) { [weak self] progress in
             Task { @MainActor in
                 self?.syncMessage = progress.message
-                self?.syncFraction = progress.fraction
+                self?.syncFraction = progress.fraction * 0.5 // Scale to first 50%
+            }
+        }
+        
+        // Save intermediate state in case of cancellation or crash
+        store.replaceAll(dailyOutcome.updatedDays)
+        store.save()
+        syncLog = dailyOutcome.log
+        profileName = dailyOutcome.profile?.displayName ?? profileName
+        recomputeAll()
+
+        if Task.isCancelled {
+            syncing = false
+            return
+        }
+
+        let hrOutcome = await engine.syncIntradayHeartRate(
+            existingDays: store.days,
+            hrDaysBack: hrDaysBack,
+            maxConcurrent: 4
+        ) { [weak self] progress in
+            Task { @MainActor in
+                self?.syncMessage = progress.message
+                self?.syncFraction = 0.5 + progress.fraction * 0.5 // Scale to second 50%
             }
         }
 
-        store.replaceAll(outcome.updatedDays)
+        if Task.isCancelled {
+            syncing = false
+            return
+        }
+
+        store.replaceAll(hrOutcome.updatedDays)
         store.save()
-        syncLog = outcome.log
+        syncLog.append(contentsOf: hrOutcome.log)
+        
         lastSyncAt = Date()
-        profileName = outcome.profile?.displayName ?? profileName
         recomputeAll()
 
-        if outcome.hadErrors {
+        if dailyOutcome.hadErrors || hrOutcome.hadErrors {
             lastError = "Sync completed with warnings – details in the sync log."
         }
     }

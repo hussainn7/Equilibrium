@@ -305,7 +305,7 @@ public final class SyncEngine: @unchecked Sendable {
             keysToLoad.append(key)
         }
         
-        if keysToLoad.isEmpty {
+        if keysToLoad.isEmpty || Task.isCancelled {
             return SyncOutcome(updatedDays: days, log: log, profile: nil)
         }
         
@@ -321,7 +321,7 @@ public final class SyncEngine: @unchecked Sendable {
             
             // Queue initial batch
             for _ in 0..<maxConcurrent {
-                if index < keysToLoad.count {
+                if index < keysToLoad.count && !Task.isCancelled {
                     let key = keysToLoad[index]
                     index += 1
                     let dayStart = DayKey.date(from: key)!
@@ -346,6 +346,8 @@ public final class SyncEngine: @unchecked Sendable {
             
             // Process completed and queue next
             for await (key, result) in group {
+                if Task.isCancelled { break }
+                
                 completed += 1
                 progress?(SyncProgress(message: "HR loading (\(completed)/\(total) days)", fraction: Double(completed) / Double(total)))
                 
@@ -362,7 +364,7 @@ public final class SyncEngine: @unchecked Sendable {
                     log.append(SyncLogEntry(metric: "Heart rate", detail: "\(key): \(Self.describe(error))", isError: true))
                 }
                 
-                if index < keysToLoad.count {
+                if index < keysToLoad.count && !Task.isCancelled {
                     let nextKey = keysToLoad[index]
                     index += 1
                     let dayStart = DayKey.date(from: nextKey)!
