@@ -1,5 +1,10 @@
 import Foundation
 
+public struct HealthAlert: Sendable {
+    public let title: String
+    public let message: String
+}
+
 public enum BandState: String, Sendable {
     case inRange
     case above
@@ -118,5 +123,47 @@ public enum HealthMonitor {
         case .spo2: return record.spo2Avg
         case .bodyTemp: return record.bodyTemp
         }
+    }
+
+    // Health Monitor alert: fires if 2+ vitals abnormal today OR same vital 2+ days running
+    public static func alert(records: [DayRecord], lookback: Int = 3) -> HealthAlert? {
+        let sortedRecords = records.sorted { $0.date < $1.date }
+        guard let _ = sortedRecords.last else { return nil }
+        
+        var recentEvals: [[HealthMetricStatus]] = []
+        let recentRecords = Array(sortedRecords.suffix(max(2, lookback)))
+        let baseCount = sortedRecords.count - recentRecords.count
+        
+        for (i, record) in recentRecords.enumerated() {
+            let historyBefore = Array(sortedRecords.prefix(baseCount + i))
+            recentEvals.append(evaluate(today: record, history: historyBefore))
+        }
+        
+        guard let todayEval = recentEvals.last else { return nil }
+        let todayAbnormal = todayEval.filter { $0.state == .below || $0.state == .above }
+        
+        if todayAbnormal.count >= 2 {
+            let names = todayAbnormal.map { $0.kind.label }.joined(separator: ", ")
+            return HealthAlert(
+                title: "Multiple Vitals Abnormal",
+                message: "Your \(names) are outside normal ranges today."
+            )
+        }
+        
+        if recentEvals.count >= 2 {
+            let yesterdayEval = recentEvals[recentEvals.count - 2]
+            let yesterdayAbnormalKinds = Set(yesterdayEval.filter { $0.state == .below || $0.state == .above }.map { $0.kind })
+            let todayAbnormalKinds = Set(todayAbnormal.map { $0.kind })
+            
+            let consecutiveAbnormal = yesterdayAbnormalKinds.intersection(todayAbnormalKinds)
+            if let kind = consecutiveAbnormal.first {
+                return HealthAlert(
+                    title: "Trend Alert: \(kind.label)",
+                    message: "Your \(kind.label) has been abnormal for multiple days running."
+                )
+            }
+        }
+        
+        return nil
     }
 }

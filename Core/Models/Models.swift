@@ -206,3 +206,34 @@ public struct DayRecord: Codable, Sendable {
         sleepSessions.reduce(0) { $0 + $1.minutesAsleep }
     }
 }
+
+// MARK: - Journal
+
+public enum JournalFactor: String, Codable, CaseIterable, Sendable {
+    case alcohol, lateCaffeine, stress, sick, screenBeforeBed, exercised
+}
+
+public struct JournalEntry: Codable, Sendable {
+    public var date: String
+    public var factors: Set<JournalFactor>
+    public var notes: String?
+
+    public init(date: String, factors: Set<JournalFactor> = [], notes: String? = nil) {
+        self.date = date
+        self.factors = factors
+        self.notes = notes
+    }
+}
+
+public struct FactorInsight: Codable, Sendable {
+    public let factor: JournalFactor
+    public let avgWith: Double
+    public let avgWithout: Double
+    public var delta: Double { avgWith - avgWithout }
+    
+    public init(factor: JournalFactor, avgWith: Double, avgWithout: Double) {
+        self.factor = factor
+        self.avgWith = avgWith
+        self.avgWithout = avgWithout
+    }
+}
