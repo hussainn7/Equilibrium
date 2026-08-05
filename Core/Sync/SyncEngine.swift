@@ -49,10 +49,9 @@ public final class SyncEngine: @unchecked Sendable {
         self.client = client
     }
 
-    public func sync(
+    public func syncDailyMetrics(
         existingDays: [String: DayRecord],
         daysBack: Int,
-        hrDaysBack: Int,
         progress: (@Sendable (SyncProgress) -> Void)? = nil
     ) async -> SyncOutcome {
         var days = existingDays
@@ -79,14 +78,16 @@ public final class SyncEngine: @unchecked Sendable {
             days[key] = record
         }
 
-        let totalSteps = 10.0
+        let totalSteps = 9.0 // Removed HR step
         var currentStep = 0.0
         func report(_ message: String) {
             progress?(SyncProgress(message: message, fraction: min(1, currentStep / totalSteps)))
             currentStep += 1
         }
+        
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
 
-        // 1. Profil
+        // 1. Profile
         report("Loading profile…")
         do {
             profile = try await client.fetchProfile()
@@ -94,6 +95,8 @@ public final class SyncEngine: @unchecked Sendable {
         } catch {
             note("Profile", Self.describe(error), error: true)
         }
+
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
 
         // 2. Sleep sessions (assigned to wake-up day)
         report("Loading sleep…")
@@ -119,6 +122,8 @@ public final class SyncEngine: @unchecked Sendable {
             note("Sleep", Self.describe(error), error: true)
         }
 
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
+
         // 3. HRV (nächtliche Samples → Mittelwert je Nacht)
         report("Loading HRV…")
         do {
@@ -138,6 +143,8 @@ public final class SyncEngine: @unchecked Sendable {
             note("HRV", Self.describe(error), error: true)
         }
 
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
+
         // 4. Respiratory rate
         report("Loading respiratory rate…")
         do {
@@ -156,6 +163,8 @@ public final class SyncEngine: @unchecked Sendable {
         } catch {
             note("Respiratory rate", Self.describe(error), error: true)
         }
+
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
 
         // 5. SpO2 (nächtlicher Durchschnitt + Minimum)
         report("Loading SpO₂…")
@@ -182,6 +191,8 @@ public final class SyncEngine: @unchecked Sendable {
             note("SpO₂", Self.describe(error), error: true)
         }
 
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
+
         // 6. Temperatur (Haut/Körper, nächtlicher Wert)
         report("Loading temperature…")
         do {
@@ -201,6 +212,8 @@ public final class SyncEngine: @unchecked Sendable {
             note("Temperature", Self.describe(error), error: true)
         }
 
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
+
         // 7. Resting HR (daily type; fallback later from night HR)
         report("Loading resting HR…")
         do {
@@ -218,6 +231,8 @@ public final class SyncEngine: @unchecked Sendable {
         } catch {
             note("Resting HR", "\(Self.describe(error)) – Fallback via night HR active", error: true)
         }
+
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
 
         // 8. Steps (interval samples → daily sum)
         report("Loading steps…")
@@ -242,30 +257,9 @@ public final class SyncEngine: @unchecked Sendable {
             note("Steps", Self.describe(error), error: true)
         }
 
-        // 9. Intraday heart rate (Phase 2: parallelized)
-        report("Loading heart rate (Phase 2)…")
-        let hrOutcome = await syncIntradayHeartRate(
-            existingDays: days,
-            hrDaysBack: hrDaysBack,
-            maxConcurrent: 4,
-            progress: progress
-        )
-        days = hrOutcome.updatedDays
-        log.append(contentsOf: hrOutcome.log)
+        if Task.isCancelled { return SyncOutcome(updatedDays: days, log: log, profile: profile) }
 
-        // Resting HR fallback: 5th percentile of night HR (00:00–08:00)
-        for key in DayKey.keys(from: startKey, to: todayKey) {
-            guard let record = days[key], record.restingHR == nil, !record.hrSamples.isEmpty,
-                  let dayStart = DayKey.date(from: key) else { continue }
-            let nightEnd = dayStart.addingTimeInterval(8 * 3600)
-            let nightSamples = record.hrSamples.filter { $0.t < nightEnd }.map { $0.bpm }
-            let basis = nightSamples.count >= 30 ? nightSamples : record.hrSamples.map { $0.bpm }
-            if let p5 = Stats.percentile(basis, 0.05) {
-                update(key) { $0.restingHR = p5 }
-            }
-        }
-
-        // 10. Workouts
+        // 9. Workouts
         report("Loading workouts…")
         do {
             let workouts = try await client.fetchExerciseSessions(start: windowStart, end: windowEnd)
@@ -281,7 +275,7 @@ public final class SyncEngine: @unchecked Sendable {
             note("Workouts", Self.describe(error), error: true)
         }
 
-        progress?(SyncProgress(message: "Done", fraction: 1))
+        progress?(SyncProgress(message: "Daily metrics done", fraction: 1))
         return SyncOutcome(updatedDays: days, log: log, profile: profile)
     }
 
