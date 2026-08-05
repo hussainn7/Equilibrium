@@ -20,18 +20,18 @@ public enum APIError: Error, LocalizedError, Sendable {
         case .http(let code, let body):
             return "HTTP \(code): \(body)"
         case .badResponse(let message):
-            return "Unerwartete Antwort: \(message)"
+            return "Unexpected response: \(message)"
         case .allVariantsFailed(let message):
-            return "Kein Lesepfad funktionierte: \(message)"
+            return "No read path worked: \(message)"
         }
     }
 }
 
-/// Client für die Google Health API (v4).
-/// Basis: https://health.googleapis.com/v4 — Datentypen als kebab-case in der URL,
-/// Filter nach AIP-160 (snake_case-Feldpfade). Da die API neu ist, probiert der
-/// Client je Datentyp mehrere Lesevarianten (reconcile → list → list nur mit
-/// Startfilter) und merkt sich die funktionierende.
+/// Client for the Google Health API (v4).
+/// Base: https://health.googleapis.com/v4 — Data types as kebab-case in the URL,
+/// filter according to AIP-160 (snake_case field paths). Since the API is new, the
+/// client tries multiple read variants per data type (reconcile → list → list only with
+/// start filter) and remembers the working one.
 public final class HealthAPIClient: @unchecked Sendable {
     public static let baseURL = URL(string: "https://health.googleapis.com/v4")!
 
@@ -59,14 +59,14 @@ public final class HealthAPIClient: @unchecked Sendable {
         return f
     }()
 
-    // MARK: - Roh-Datenpunkte
+    // MARK: - Raw Data Points
 
-    /// Lädt alle Datenpunkte eines Typs im Zeitfenster (mit Pagination).
+    /// Loads all data points of a type in the time window (with pagination).
     /// - Parameters:
-    ///   - type: kebab-case-Datentyp der URL, z.B. "heart-rate"
-    ///   - payloadKey: camelCase-Key des Payloads im Datenpunkt, z.B. "heartRate"
-    ///   - filterField: Feldpfad hinter dem Payload-Key, z.B. "sample_time.physical_time"
-    ///   - datesAsCivil: true für Tagesdatentypen (Filterwerte als "yyyy-MM-dd")
+    ///   - type: kebab-case data type of the URL, e.g. "heart-rate"
+    ///   - payloadKey: camelCase key of the payload in the data point, e.g. "heartRate"
+    ///   - filterField: field path behind the payload key, e.g. "sample_time.physical_time"
+    ///   - datesAsCivil: true for daily data types (filter values as "yyyy-MM-dd")
     public func fetchRawDataPoints(
         type: String,
         payloadKey: String,
@@ -104,7 +104,7 @@ public final class HealthAPIClient: @unchecked Sendable {
                 throw error
             }
         }
-        throw APIError.allVariantsFailed(lastError.map { "\($0.localizedDescription)" } ?? "unbekannt")
+        throw APIError.allVariantsFailed(lastError.map { "\($0.localizedDescription)" } ?? "unknown")
     }
 
     private func fetchPaginated(type: String, filter: String, reconcile: Bool) async throws -> [[String: Any]] {
@@ -145,9 +145,9 @@ public final class HealthAPIClient: @unchecked Sendable {
         lock.unlock()
     }
 
-    // MARK: - Typisierte Abfragen
+    // MARK: - Typed Queries
 
-    /// Sample-Datentypen (Herzfrequenz, HRV, SpO2, Atemfrequenz, Temperatur …).
+    /// Sample data types (heart rate, HRV, SpO2, respiratory rate, temperature …).
     public func fetchSamples(
         type: String,
         payloadKey: String,
@@ -176,7 +176,7 @@ public final class HealthAPIClient: @unchecked Sendable {
         .sorted { $0.time < $1.time }
     }
 
-    /// Tagesdatentypen (z.B. resting-heart-rate) → Werte je "yyyy-MM-dd".
+    /// Daily data types (e.g. resting-heart-rate) → values per "yyyy-MM-dd".
     public func fetchDailyValues(
         type: String,
         payloadKey: String,
@@ -207,7 +207,7 @@ public final class HealthAPIClient: @unchecked Sendable {
         return result
     }
 
-    /// Schlaf-Sessions inkl. Phasen.
+    /// Sleep sessions incl. stages.
     public func fetchSleepSessions(start: Date, end: Date) async throws -> [SleepSession] {
         let points = try await fetchRawDataPoints(
             type: "sleep",
@@ -268,7 +268,7 @@ public final class HealthAPIClient: @unchecked Sendable {
         )
     }
 
-    /// Workout-/Exercise-Sessions.
+    /// Workout/Exercise sessions.
     public func fetchExerciseSessions(start: Date, end: Date) async throws -> [Workout] {
         let points = try await fetchRawDataPoints(
             type: "exercise",
@@ -295,7 +295,7 @@ public final class HealthAPIClient: @unchecked Sendable {
         }
     }
 
-    /// Nutzerprofil (Name, Geburtstag falls freigegeben).
+    /// User profile (name, birthday if shared).
     public func fetchProfile() async throws -> UserProfile {
         let json = try await getJSON(path: "/users/me/profile", query: [])
         let payload = (json["profile"] as? [String: Any]) ?? json
@@ -308,15 +308,15 @@ public final class HealthAPIClient: @unchecked Sendable {
 
     private func getJSON(path: String, query: [URLQueryItem]) async throws -> [String: Any] {
         guard var components = URLComponents(url: Self.baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false) else {
-            throw APIError.badResponse("Ungültiger Pfad")
+            throw APIError.badResponse("Invalid path")
         }
-        // ":reconcile" darf nicht als Pfadsegment encodiert werden
+        // ":reconcile" must not be encoded as a path segment
         components.path = components.path.replacingOccurrences(of: "%3A", with: ":")
         if !query.isEmpty {
             components.queryItems = query
         }
         guard let url = components.url else {
-            throw APIError.badResponse("Ungültige URL")
+            throw APIError.badResponse("Invalid URL")
         }
 
         var attempt = 0
@@ -336,14 +336,14 @@ public final class HealthAPIClient: @unchecked Sendable {
                 throw APIError.badResponse(error.localizedDescription)
             }
             guard let http = response as? HTTPURLResponse else {
-                throw APIError.badResponse("Keine HTTP-Antwort")
+                throw APIError.badResponse("No HTTP response")
             }
 
             switch http.statusCode {
             case 200..<300:
                 guard let object = try? JSONSerialization.jsonObject(with: data),
                       let dict = object as? [String: Any] else {
-                    throw APIError.badResponse("Kein JSON-Objekt")
+                    throw APIError.badResponse("No JSON object")
                 }
                 return dict
             case 401 where !didRefresh:

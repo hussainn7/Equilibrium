@@ -19,14 +19,14 @@ struct SettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.bg)
-            .navigationTitle("Mehr")
+            .navigationTitle("More")
             .sheet(isPresented: $showConnectSheet) {
                 ConnectSheet()
             }
         }
     }
 
-    // MARK: - Verbindung
+    // MARK: - Connection
 
     private var connectionSection: some View {
         Section {
@@ -35,24 +35,24 @@ struct SettingsView: View {
                     Circle()
                         .fill(model.isConnected ? Theme.green : Theme.textSecondary)
                         .frame(width: 8, height: 8)
-                    Text(model.isConnected ? "Verbunden" : "Nicht verbunden")
+                    Text(model.isConnected ? "Connected" : "Not connected")
                 }
             }
             if let name = model.profileName {
-                LabeledContent("Konto", value: name)
+                LabeledContent("Account", value: name)
             }
-            Button(model.isConnected ? "Neu verbinden" : "Mit Google Health verbinden") {
+            Button(model.isConnected ? "Reconnect" : "Connect to Google Health") {
                 showConnectSheet = true
             }
             if model.isConnected {
-                Button("Verbindung trennen", role: .destructive) {
+                Button("Disconnect", role: .destructive) {
                     model.disconnect()
                 }
             }
         } header: {
             Text("Google Health")
         } footer: {
-            Text("Hinweis: Solange dein Google-Cloud-Projekt im Status „Testing“ ist, läuft die Anmeldung alle 7 Tage ab und muss per „Neu verbinden“ erneuert werden.")
+            Text("Note: As long as your Google Cloud project is in 'Testing' status, the login expires every 7 days and must be renewed via 'Reconnect'.")
         }
     }
 
@@ -60,12 +60,12 @@ struct SettingsView: View {
 
     private var syncSection: some View {
         @Bindable var model = model
-        return Section("Synchronisierung") {
+        return Section("Synchronization") {
             Button {
                 Task { await model.syncNow() }
             } label: {
                 HStack {
-                    Text(model.syncing ? model.syncMessage : "Jetzt synchronisieren")
+                    Text(model.syncing ? model.syncMessage : "Sync now")
                     Spacer()
                     if model.syncing {
                         ProgressView()
@@ -75,74 +75,74 @@ struct SettingsView: View {
             .disabled(!model.isConnected || model.syncing)
 
             if let lastSync = model.lastSyncAt {
-                LabeledContent("Letzter Sync", value: Fmt.relative(lastSync))
+                LabeledContent("Last sync", value: Fmt.relative(lastSync))
             }
 
-            Picker("Zeitraum (Backfill)", selection: $model.daysBack) {
-                Text("30 Tage").tag(30)
-                Text("60 Tage").tag(60)
-                Text("90 Tage").tag(90)
-                Text("180 Tage").tag(180)
+            Picker("Timeframe (Backfill)", selection: $model.daysBack) {
+                Text("30 Days").tag(30)
+                Text("60 Days").tag(60)
+                Text("90 Days").tag(90)
+                Text("180 Days").tag(180)
             }
-            Picker("Intraday-Herzfrequenz", selection: $model.hrDaysBack) {
-                Text("7 Tage").tag(7)
-                Text("14 Tage").tag(14)
-                Text("28 Tage").tag(28)
+            Picker("Intraday Heart Rate", selection: $model.hrDaysBack) {
+                Text("7 Days").tag(7)
+                Text("14 Days").tag(14)
+                Text("28 Days").tag(28)
             }
 
-            NavigationLink("Sync-Protokoll") {
+            NavigationLink("Sync Log") {
                 SyncLogView()
             }
         }
     }
 
-    // MARK: - Berechnung
+    // MARK: - Calculation
 
     private func calculationSection(model: Bindable<AppModel>) -> some View {
         Section {
             Stepper(value: model.baseSleepNeedMinutes, in: 360...600, step: 15) {
-                LabeledContent("Basis-Schlafbedarf", value: "\(Fmt.hm(model.wrappedValue.baseSleepNeedMinutes)) h")
+                LabeledContent("Baseline Sleep Need", value: "\(Fmt.hm(model.wrappedValue.baseSleepNeedMinutes)) h")
             }
             Stepper(value: model.age, in: 14...90) {
-                LabeledContent("Alter", value: "\(model.wrappedValue.age)")
+                LabeledContent("Age", value: "\(model.wrappedValue.age)")
             }
             if model.wrappedValue.maxHROverride > 0 {
                 Stepper(value: model.maxHROverride, in: 130...220, step: 1) {
-                    LabeledContent("Max. Herzfrequenz", value: "\(Int(model.wrappedValue.maxHROverride))")
+                    LabeledContent("Max Heart Rate", value: "\(Int(model.wrappedValue.maxHROverride))")
                 }
-                Button("Max. HF automatisch bestimmen") {
+                Button("Determine Max HR automatically") {
                     model.wrappedValue.maxHROverride = 0
                 }
             } else {
-                LabeledContent("Max. Herzfrequenz", value: "\(Int(model.wrappedValue.strainConfig.maxHR)) (automatisch)")
-                Button("Max. HF manuell festlegen") {
+                LabeledContent("Max Heart Rate", value: "\(Int(model.wrappedValue.strainConfig.maxHR)) (automatic)")
+                Button("Set Max HR manually") {
                     model.wrappedValue.maxHROverride = model.wrappedValue.strainConfig.maxHR.rounded()
                 }
             }
         } header: {
-            Text("Berechnung")
+            Text("Calculation")
         } footer: {
-            Text("Max. HF automatisch = Tanaka-Formel (208 − 0,7 × Alter). Alle Scores werden bei Änderungen sofort neu berechnet.")
+            Text("Max HR automatic = Tanaka formula (208 − 0.7 × age). All scores are immediately recalculated upon changes.")
         }
     }
 
     // MARK: - Demo
 
     private var demoSection: some View {
-        Section("Demo-Modus") {
+        Section("Demo Mode") {
             if model.demoMode {
-                LabeledContent("Status", value: "Aktiv (generierte Daten)")
-                Button("Demo beenden & Daten löschen", role: .destructive) {
+                LabeledContent("Status", value: "Active (generated data)")
+                Button("End demo & delete data", role: .destructive) {
                     confirmDemoEnd = true
                 }
-                .confirmationDialog("Demo-Daten wirklich löschen?", isPresented: $confirmDemoEnd, titleVisibility: .visible) {
-                    Button("Löschen", role: .destructive) {
+                .confirmationDialog("Really delete demo data?", isPresented: $confirmDemoEnd, titleVisibility: .visible) {
+                    Button("Delete", role: .destructive) {
                         model.resetAll()
                     }
-                    Button("Abbrechen", role: .cancel) {}
+                    Button("Cancel", role: .cancel) {}
                 }
             } else {
-                Button("Demo-Daten laden") {
+                Button("Load demo data") {
                     model.startDemo()
                 }
                 .disabled(model.isConnected)
@@ -150,43 +150,43 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Daten
+    // MARK: - Data
 
     private var dataSection: some View {
         Section {
-            Button("Alle Daten löschen", role: .destructive) {
+            Button("Delete all data", role: .destructive) {
                 confirmReset = true
             }
             .confirmationDialog(
-                "Alle lokalen Daten und die Google-Verbindung löschen?",
+                "Delete all local data and the Google connection?",
                 isPresented: $confirmReset,
                 titleVisibility: .visible
             ) {
-                Button("Alles löschen", role: .destructive) {
+                Button("Delete everything", role: .destructive) {
                     model.disconnect()
                     model.resetAll()
                 }
-                Button("Abbrechen", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             }
         } footer: {
-            Text("Alle Daten liegen ausschließlich lokal auf diesem iPhone (JSON in Application Support). Es gibt keinen Server.")
+            Text("All data is stored exclusively locally on this iPhone (JSON in Application Support). There is no server.")
         }
     }
 
-    // MARK: - Über
+    // MARK: - About
 
     private var aboutSection: some View {
-        Section("Über") {
+        Section("About") {
             LabeledContent("App", value: "Pulse 1.0")
-            LabeledContent("Datenquelle", value: "Google Health API (v4)")
-            Text("Pulse liest die Daten deiner Fitbit Air über die Google Health API (Nachfolger der Fitbit Web API, die im September 2026 abgeschaltet wird) und berechnet daraus Whoop-artige Recovery-, Strain- und Schlaf-Scores – rein lokal, ohne Abo.")
+            LabeledContent("Data Source", value: "Google Health API (v4)")
+            Text("Pulse reads the data from your Fitbit Air via the Google Health API (successor to the Fitbit Web API, which will be shut down in September 2026) and calculates Whoop-like recovery, strain, and sleep scores from it – purely locally, without a subscription.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
         }
     }
 }
 
-// MARK: - Sync-Protokoll
+// MARK: - Sync Log
 
 struct SyncLogView: View {
     @Environment(AppModel.self) private var model
@@ -194,7 +194,7 @@ struct SyncLogView: View {
     var body: some View {
         List {
             if model.syncLog.isEmpty {
-                Text("Noch kein Sync in dieser Sitzung.")
+                Text("No sync in this session yet.")
                     .foregroundStyle(Theme.textSecondary)
             } else {
                 ForEach(model.syncLog) { entry in
@@ -214,7 +214,7 @@ struct SyncLogView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.bg)
-        .navigationTitle("Sync-Protokoll")
+        .navigationTitle("Sync Log")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

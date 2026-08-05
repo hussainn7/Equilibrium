@@ -39,9 +39,9 @@ public struct SyncOutcome: Sendable {
     }
 }
 
-/// Orchestriert alle API-Abrufe für ein Zeitfenster. Jede Metrik wird isoliert
-/// geladen — ein Fehler (z.B. ein noch nicht verfügbarer Datentyp) blockiert
-/// die übrigen Metriken nicht, sondern landet nur im Sync-Log.
+/// Orchestrates all API fetches for a time window. Each metric is loaded isolated
+/// — an error (e.g. an unavailable data type) doesn't block
+/// the other metrics, but only lands in the sync log.
 public final class SyncEngine: @unchecked Sendable {
     private let client: HealthAPIClient
 
@@ -62,7 +62,7 @@ public final class SyncEngine: @unchecked Sendable {
         let todayKey = DayKey.today()
         let startKey = DayKey.addDays(todayKey, -(max(1, daysBack) - 1))
         guard let windowStart = DayKey.date(from: startKey) else {
-            return SyncOutcome(updatedDays: days, log: [SyncLogEntry(metric: "Sync", detail: "Ungültiges Zeitfenster", isError: true)], profile: nil)
+            return SyncOutcome(updatedDays: days, log: [SyncLogEntry(metric: "Sync", detail: "Invalid time window", isError: true)], profile: nil)
         }
         let windowEnd = Date()
         let syncStamp = Date()
@@ -87,16 +87,16 @@ public final class SyncEngine: @unchecked Sendable {
         }
 
         // 1. Profil
-        report("Profil laden…")
+        report("Loading profile…")
         do {
             profile = try await client.fetchProfile()
-            note("Profil", "geladen")
+            note("Profile", "loaded")
         } catch {
-            note("Profil", Self.describe(error), error: true)
+            note("Profile", Self.describe(error), error: true)
         }
 
-        // 2. Schlaf-Sessions (Zuordnung zum Aufwach-Tag)
-        report("Schlaf laden…")
+        // 2. Sleep sessions (assigned to wake-up day)
+        report("Loading sleep…")
         do {
             let sessions = try await client.fetchSleepSessions(
                 start: windowStart.addingTimeInterval(-12 * 3600),
@@ -114,13 +114,13 @@ public final class SyncEngine: @unchecked Sendable {
                 }
                 update(key) { $0.sleepSessions = sorted }
             }
-            note("Schlaf", "\(sessions.count) Sessions")
+            note("Sleep", "\(sessions.count) Sessions")
         } catch {
-            note("Schlaf", Self.describe(error), error: true)
+            note("Sleep", Self.describe(error), error: true)
         }
 
         // 3. HRV (nächtliche Samples → Mittelwert je Nacht)
-        report("HRV laden…")
+        report("Loading HRV…")
         do {
             let samples = try await client.fetchSamples(
                 type: "heart-rate-variability",
@@ -133,13 +133,13 @@ public final class SyncEngine: @unchecked Sendable {
             for (key, values) in grouped {
                 update(key) { $0.hrvRmssd = Stats.mean(values) }
             }
-            note("HRV", "\(samples.count) Samples, \(grouped.count) Nächte")
+            note("HRV", "\(samples.count) Samples, \(grouped.count) Nights")
         } catch {
             note("HRV", Self.describe(error), error: true)
         }
 
-        // 4. Atemfrequenz
-        report("Atemfrequenz laden…")
+        // 4. Respiratory rate
+        report("Loading respiratory rate…")
         do {
             let samples = try await client.fetchSamples(
                 type: "respiratory-rate",
@@ -152,13 +152,13 @@ public final class SyncEngine: @unchecked Sendable {
             for (key, values) in grouped {
                 update(key) { $0.respiratoryRate = Stats.mean(values) }
             }
-            note("Atemfrequenz", "\(grouped.count) Nächte")
+            note("Respiratory rate", "\(grouped.count) Nights")
         } catch {
-            note("Atemfrequenz", Self.describe(error), error: true)
+            note("Respiratory rate", Self.describe(error), error: true)
         }
 
         // 5. SpO2 (nächtlicher Durchschnitt + Minimum)
-        report("SpO₂ laden…")
+        report("Loading SpO₂…")
         do {
             let samples = try await client.fetchSamples(
                 type: "oxygen-saturation",
@@ -177,13 +177,13 @@ public final class SyncEngine: @unchecked Sendable {
                     $0.spo2Min = values.min()
                 }
             }
-            note("SpO₂", "\(byNight.count) Nächte")
+            note("SpO₂", "\(byNight.count) Nights")
         } catch {
             note("SpO₂", Self.describe(error), error: true)
         }
 
         // 6. Temperatur (Haut/Körper, nächtlicher Wert)
-        report("Temperatur laden…")
+        report("Loading temperature…")
         do {
             let samples = try await client.fetchSamples(
                 type: "body-temperature",
@@ -196,13 +196,13 @@ public final class SyncEngine: @unchecked Sendable {
             for (key, values) in grouped {
                 update(key) { $0.bodyTemp = Stats.mean(values) }
             }
-            note("Temperatur", "\(grouped.count) Nächte")
+            note("Temperature", "\(grouped.count) Nights")
         } catch {
-            note("Temperatur", Self.describe(error), error: true)
+            note("Temperature", Self.describe(error), error: true)
         }
 
-        // 7. Ruhepuls (Tagesdatentyp; Fallback später aus Nacht-HR)
-        report("Ruhepuls laden…")
+        // 7. Resting HR (daily type; fallback later from night HR)
+        report("Loading resting HR…")
         do {
             let values = try await client.fetchDailyValues(
                 type: "resting-heart-rate",
@@ -214,13 +214,13 @@ public final class SyncEngine: @unchecked Sendable {
             for (key, value) in values {
                 update(key) { $0.restingHR = value }
             }
-            note("Ruhepuls", "\(values.count) Tage")
+            note("Resting HR", "\(values.count) Days")
         } catch {
-            note("Ruhepuls", "\(Self.describe(error)) – Fallback über Nacht-HF aktiv", error: true)
+            note("Resting HR", "\(Self.describe(error)) – Fallback via night HR active", error: true)
         }
 
-        // 8. Schritte (Intervall-Samples → Tagessumme)
-        report("Schritte laden…")
+        // 8. Steps (interval samples → daily sum)
+        report("Loading steps…")
         do {
             let samples = try await client.fetchSamples(
                 type: "steps",
@@ -237,13 +237,13 @@ public final class SyncEngine: @unchecked Sendable {
             for (key, total) in byDay {
                 update(key) { $0.steps = Int(total) }
             }
-            note("Schritte", "\(byDay.count) Tage")
+            note("Steps", "\(byDay.count) Days")
         } catch {
-            note("Schritte", Self.describe(error), error: true)
+            note("Steps", Self.describe(error), error: true)
         }
 
-        // 9. Intraday-Herzfrequenz (Phase 2: parallelized)
-        report("Herzfrequenz laden (Phase 2)…")
+        // 9. Intraday heart rate (Phase 2: parallelized)
+        report("Loading heart rate (Phase 2)…")
         let hrOutcome = await syncIntradayHeartRate(
             existingDays: days,
             hrDaysBack: hrDaysBack,
@@ -253,7 +253,7 @@ public final class SyncEngine: @unchecked Sendable {
         days = hrOutcome.updatedDays
         log.append(contentsOf: hrOutcome.log)
 
-        // Ruhepuls-Fallback: 5. Perzentil der nächtlichen HF (00:00–08:00)
+        // Resting HR fallback: 5th percentile of night HR (00:00–08:00)
         for key in DayKey.keys(from: startKey, to: todayKey) {
             guard let record = days[key], record.restingHR == nil, !record.hrSamples.isEmpty,
                   let dayStart = DayKey.date(from: key) else { continue }
@@ -266,7 +266,7 @@ public final class SyncEngine: @unchecked Sendable {
         }
 
         // 10. Workouts
-        report("Workouts laden…")
+        report("Loading workouts…")
         do {
             let workouts = try await client.fetchExerciseSessions(start: windowStart, end: windowEnd)
             var byDay: [String: [Workout]] = [:]
@@ -281,7 +281,7 @@ public final class SyncEngine: @unchecked Sendable {
             note("Workouts", Self.describe(error), error: true)
         }
 
-        progress?(SyncProgress(message: "Fertig", fraction: 1))
+        progress?(SyncProgress(message: "Done", fraction: 1))
         return SyncOutcome(updatedDays: days, log: log, profile: profile)
     }
 
@@ -359,7 +359,7 @@ public final class SyncEngine: @unchecked Sendable {
                     days[key] = record
                     
                 case .failure(let error):
-                    log.append(SyncLogEntry(metric: "Herzfrequenz", detail: "\(key): \(Self.describe(error))", isError: true))
+                    log.append(SyncLogEntry(metric: "Heart rate", detail: "\(key): \(Self.describe(error))", isError: true))
                 }
                 
                 if index < keysToLoad.count {
@@ -388,15 +388,15 @@ public final class SyncEngine: @unchecked Sendable {
         
         let successCount = keysToLoad.count - log.count
         if successCount > 0 {
-            log.append(SyncLogEntry(metric: "Herzfrequenz", detail: "\(successCount) Tage Intraday parallel geladen"))
+            log.append(SyncLogEntry(metric: "Heart rate", detail: "\(successCount) days intraday loaded in parallel"))
         }
         
         return SyncOutcome(updatedDays: days, log: log, profile: nil)
     }
 
-    // MARK: - Helfer
+    // MARK: - Helpers
 
-    /// Gruppiert Samples nach Aufwach-Tag (Nacht-Zuordnung via +6h-Verschiebung).
+    /// Groups samples by wake-up day (night assignment via +6h shift).
     public static func groupByNight(_ samples: [SamplePoint]) -> [String: [Double]] {
         var result: [String: [Double]] = [:]
         for sample in samples {
@@ -405,7 +405,7 @@ public final class SyncEngine: @unchecked Sendable {
         return result
     }
 
-    /// Reduziert Roh-Samples (bis zu 5-Sekunden-Auflösung) auf Minuten-Mittelwerte.
+    /// Reduces raw samples (up to 5-second resolution) to minute averages.
     public static func downsampleToMinutes(_ samples: [SamplePoint]) -> [HRSample] {
         var buckets: [Date: (sum: Double, count: Int)] = [:]
         for sample in samples {

@@ -20,7 +20,7 @@ func trendPoints(_ pairs: [(key: String, value: Double)]) -> [TrendPoint] {
     pairs.compactMap { TrendPoint(key: $0.key, value: $0.value) }
 }
 
-// MARK: - Intraday-Herzfrequenz
+// MARK: - Intraday Heart Rate
 
 struct HRDayChart: View {
     let samples: [HRSample]
@@ -37,8 +37,8 @@ struct HRDayChart: View {
         let upper = (values.max() ?? 180) + 12
         Chart(display, id: \.t) { sample in
             LineMark(
-                x: .value("Zeit", sample.t),
-                y: .value("Puls", sample.bpm)
+                x: .value("Time", sample.t),
+                y: .value("HR", sample.bpm)
             )
             .foregroundStyle(Theme.red.opacity(0.9))
             .interpolationMethod(.monotone)
@@ -62,7 +62,7 @@ struct HRDayChart: View {
     }
 }
 
-// MARK: - Recovery-Balken
+// MARK: - Recovery Bars
 
 struct RecoveryBarsChart: View {
     let points: [TrendPoint]
@@ -71,7 +71,7 @@ struct RecoveryBarsChart: View {
     var body: some View {
         Chart(points) { point in
             BarMark(
-                x: .value("Tag", point.date, unit: .day),
+                x: .value("Day", point.date, unit: .day),
                 y: .value("Recovery", point.value)
             )
             .foregroundStyle(Theme.recoveryColor(score: Int(point.value)))
@@ -84,7 +84,7 @@ struct RecoveryBarsChart: View {
     }
 }
 
-// MARK: - Strain-Linie
+// MARK: - Strain Line
 
 struct StrainLineChart: View {
     let points: [TrendPoint]
@@ -93,7 +93,7 @@ struct StrainLineChart: View {
     var body: some View {
         Chart(points) { point in
             AreaMark(
-                x: .value("Tag", point.date, unit: .day),
+                x: .value("Day", point.date, unit: .day),
                 y: .value("Strain", point.value)
             )
             .foregroundStyle(
@@ -106,7 +106,7 @@ struct StrainLineChart: View {
             .interpolationMethod(.monotone)
 
             LineMark(
-                x: .value("Tag", point.date, unit: .day),
+                x: .value("Day", point.date, unit: .day),
                 y: .value("Strain", point.value)
             )
             .foregroundStyle(Theme.strainBlue)
@@ -120,7 +120,7 @@ struct StrainLineChart: View {
     }
 }
 
-// MARK: - Schlafdauer vs. Bedarf
+// MARK: - Sleep Duration vs. Need
 
 struct SleepTrendChart: View {
     let slept: [TrendPoint] // Minuten
@@ -131,16 +131,16 @@ struct SleepTrendChart: View {
         Chart {
             ForEach(slept) { point in
                 BarMark(
-                    x: .value("Tag", point.date, unit: .day),
-                    y: .value("Stunden", point.value / 60)
+                    x: .value("Day", point.date, unit: .day),
+                    y: .value("Hours", point.value / 60)
                 )
                 .foregroundStyle(Theme.sleepPurple.opacity(0.85))
                 .cornerRadius(3)
             }
             ForEach(need) { point in
                 LineMark(
-                    x: .value("Tag", point.date, unit: .day),
-                    y: .value("Bedarf", point.value / 60)
+                    x: .value("Day", point.date, unit: .day),
+                    y: .value("Need", point.value / 60)
                 )
                 .foregroundStyle(.white.opacity(0.7))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
@@ -152,7 +152,7 @@ struct SleepTrendChart: View {
     }
 }
 
-// MARK: - Linie mit Baseline-Band
+// MARK: - Line with Baseline Band
 
 struct BaselineLineChart: View {
     let points: [TrendPoint]
@@ -174,9 +174,9 @@ struct BaselineLineChart: View {
             if let band {
                 ForEach(points) { point in
                     AreaMark(
-                        x: .value("Tag", point.date, unit: .day),
-                        yStart: .value("unten", band.lower),
-                        yEnd: .value("oben", band.upper)
+                        x: .value("Day", point.date, unit: .day),
+                        yStart: .value("bottom", band.lower),
+                        yEnd: .value("top", band.upper)
                     )
                     .foregroundStyle(color.opacity(0.10))
                 }
@@ -186,8 +186,8 @@ struct BaselineLineChart: View {
             }
             ForEach(points) { point in
                 LineMark(
-                    x: .value("Tag", point.date, unit: .day),
-                    y: .value("Wert", point.value)
+                    x: .value("Day", point.date, unit: .day),
+                    y: .value("Value", point.value)
                 )
                 .foregroundStyle(color)
                 .interpolationMethod(.monotone)
@@ -202,7 +202,7 @@ struct BaselineLineChart: View {
     }
 }
 
-// MARK: - Recovery + Strain kombiniert
+// MARK: - Recovery + Strain combined
 
 struct RecoveryStrainChart: View {
     let recovery: [TrendPoint] // 0–100
@@ -214,7 +214,7 @@ struct RecoveryStrainChart: View {
             Chart {
                 ForEach(recovery) { point in
                     BarMark(
-                        x: .value("Tag", point.date, unit: .day),
+                        x: .value("Day", point.date, unit: .day),
                         y: .value("Recovery", point.value)
                     )
                     .foregroundStyle(Theme.recoveryColor(score: Int(point.value)).opacity(0.55))
@@ -222,7 +222,7 @@ struct RecoveryStrainChart: View {
                 }
                 ForEach(strain) { point in
                     LineMark(
-                        x: .value("Tag", point.date, unit: .day),
+                        x: .value("Day", point.date, unit: .day),
                         y: .value("Strain", point.value * 100 / 21)
                     )
                     .foregroundStyle(Theme.strainBlue)
@@ -244,7 +244,7 @@ struct RecoveryStrainChart: View {
                 }
                 HStack(spacing: 5) {
                     Capsule().fill(Theme.strainBlue).frame(width: 12, height: 3)
-                    Text("Strain (skaliert auf 100)")
+                    Text("Strain (scaled to 100)")
                 }
             }
             .font(.caption2)
@@ -262,8 +262,8 @@ struct Sparkline: View {
     var body: some View {
         Chart(points) { point in
             LineMark(
-                x: .value("Tag", point.date, unit: .day),
-                y: .value("Wert", point.value)
+                x: .value("Day", point.date, unit: .day),
+                y: .value("Value", point.value)
             )
             .foregroundStyle(color)
             .interpolationMethod(.monotone)
@@ -275,7 +275,7 @@ struct Sparkline: View {
     }
 }
 
-// MARK: - Gemeinsame Achsen
+// MARK: - Common Axes
 
 func defaultXAxis() -> some AxisContent {
     AxisMarks(values: .automatic(desiredCount: 5)) { _ in

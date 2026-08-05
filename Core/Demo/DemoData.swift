@@ -1,7 +1,7 @@
 import Foundation
 
-/// Deterministischer Zufallsgenerator (xorshift64), damit der Demo-Datensatz
-/// reproduzierbar ist.
+/// Deterministic random number generator (xorshift64) so the demo dataset
+/// is reproducible.
 public struct SeededRNG: RandomNumberGenerator {
     private var state: UInt64
 
@@ -17,9 +17,9 @@ public struct SeededRNG: RandomNumberGenerator {
     }
 }
 
-/// Erzeugt einen plausiblen, korrelierten Demo-Datensatz (Trainingsrhythmus,
-/// Erholungsdips nach harten Tagen, gelegentliche schlechte Nächte), damit die
-/// App ohne Google-Verbindung ausprobiert werden kann.
+/// Generates a plausible, correlated demo dataset (training rhythm,
+/// recovery dips after hard days, occasional bad nights) so the
+/// app can be tried out without a Google connection.
 public enum DemoData {
     public static func generate(daysBack: Int = 120, seed: UInt64 = 42) -> [String: DayRecord] {
         var rng = SeededRNG(seed: seed)
@@ -43,7 +43,7 @@ public enum DemoData {
             let dayIndex = Double(daysBack - offset)
             let slowWave = sin(dayIndex / 14 * .pi) * 3.5
 
-            // Nächtliche Recovery-Metriken (reagieren auf den Vortag)
+            // Nightly recovery metrics (react to previous day)
             let hrv = Stats.clamp(
                 62 + slowWave + Double.random(in: -6...6, using: &rng)
                     - previousIntensity * 11 - (previousAlcohol ? 12 : 0),
@@ -62,7 +62,7 @@ public enum DemoData {
             record.spo2Min = spo2 - Double.random(in: 1.2...2.8, using: &rng)
             record.bodyTemp = 33.9 + Double.random(in: -0.25...0.25, using: &rng) + (previousAlcohol ? 0.4 : 0)
 
-            // Schlaf
+            // Sleep
             let sleepImpact = previousAlcohol ? -35.0 : 0.0
             let wakeOffset = (6.8 + (isWeekend ? 0.9 : 0) + Double.random(in: -0.4...0.5, using: &rng)) * 3600
             let wake = dayStart.addingTimeInterval(wakeOffset)
@@ -93,10 +93,10 @@ public enum DemoData {
             if intensity > 0.2 {
                 let names: [String]
                 switch weekday {
-                case 2, 5: names = ["Intervalle", "Laufen"]
-                case 3: names = ["Krafttraining", "Rad"]
-                case 7: names = ["Langer Lauf", "Radtour"]
-                default: names = ["Laufen", "Rad", "Krafttraining"]
+                case 2, 5: names = ["Intervals", "Running"]
+                case 3: names = ["Strength Training", "Cycling"]
+                case 7: names = ["Long Run", "Bike Ride"]
+                default: names = ["Running", "Cycling", "Strength Training"]
                 }
                 let name = names[Int(rng.next() % UInt64(names.count))]
                 let duration = 35 + intensity * 60 + Double.random(in: 0...20, using: &rng)
@@ -115,10 +115,10 @@ public enum DemoData {
                 record.workouts = [workout!]
             }
 
-            // Schritte
+            // Steps
             record.steps = Int(3500 + intensity * 9000 + Double.random(in: 0...2500, using: &rng))
 
-            // Intraday-HF (2-min-Auflösung) für die letzten 28 Tage
+            // Intraday HR (2-min resolution) for the last 28 days
             if offset < 28 {
                 record.hrSamples = makeHRSamples(
                     dayStart: dayStart,
@@ -140,13 +140,13 @@ public enum DemoData {
     private static func trainingIntensity(weekday: Int, rng: inout SeededRNG) -> Double {
         let base: Double
         switch weekday {
-        case 2: base = 0.85 // Montag hart
+        case 2: base = 0.85 // Monday hard
         case 3: base = 0.55
         case 4: base = 0.25
-        case 5: base = 0.80 // Donnerstag hart
+        case 5: base = 0.80 // Thursday hard
         case 6: base = 0.10
-        case 7: base = 0.70 // Samstag lang
-        default: base = 0.0 // Sonntag Ruhetag
+        case 7: base = 0.70 // Saturday long
+        default: base = 0.0 // Sunday rest day
         }
         guard base > 0 else { return 0 }
         return Stats.clamp(base + Double.random(in: -0.15...0.15, using: &rng), 0, 1)
@@ -219,7 +219,7 @@ public enum DemoData {
                 bpm = rhr + (avgHR - rhr) * ramp + Double.random(in: -8...10, using: &rng)
             } else {
                 bpm = rhr + 14 + Double.random(in: -6...14, using: &rng)
-                // Alltagsspitzen (Treppen, Wege)
+                // Everyday peaks (stairs, walking)
                 if Double.random(in: 0...1, using: &rng) < 0.03 {
                     bpm += Double.random(in: 10...30, using: &rng)
                 }

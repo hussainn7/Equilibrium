@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Karten
+// MARK: - Cards
 
 struct SectionCard<Content: View>: View {
     let title: String?
@@ -49,7 +49,7 @@ struct RingGauge<Center: View>: View {
     }
 }
 
-/// 270°-Bogen für die Strain-Skala (0–21).
+/// 270° arc for the strain scale (0–21).
 struct ArcGauge<Center: View>: View {
     var fraction: Double // 0–1
     var color: Color
@@ -72,7 +72,7 @@ struct ArcGauge<Center: View>: View {
     }
 }
 
-// MARK: - Kleinteile
+// MARK: - Small Parts
 
 struct StatCell: View {
     let label: String
@@ -130,7 +130,7 @@ struct EmptyDataHint: View {
     }
 }
 
-// MARK: - Intensitätszonen
+// MARK: - Intensity Zones
 
 struct ZoneBarsView: View {
     let zoneMinutes: [Double]
@@ -167,7 +167,7 @@ struct ZoneBarsView: View {
     }
 }
 
-// MARK: - Schlafphasen-Timeline (Hypnogramm)
+// MARK: - Sleep Stages Timeline (Hypnogram)
 
 struct StagesTimelineView: View {
     let session: SleepSession
@@ -189,7 +189,7 @@ struct StagesTimelineView: View {
                 guard total > 0 else { return }
                 let laneHeight = size.height / CGFloat(lanes.count)
 
-                // Lane-Hintergrundlinien
+                // Lane background lines
                 for index in lanes.indices {
                     let y = CGFloat(index) * laneHeight + laneHeight / 2
                     var line = Path()
@@ -230,7 +230,7 @@ struct StagesTimelineView: View {
     }
 }
 
-// MARK: - Phasen-Verteilung
+// MARK: - Stage Distribution
 
 struct StageDistributionView: View {
     let stageMinutes: [SleepStage: Double]

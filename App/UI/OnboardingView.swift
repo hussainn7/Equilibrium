@@ -29,7 +29,7 @@ struct OnboardingView: View {
                 Text("Pulse")
                     .font(.system(size: 42, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.textPrimary)
-                Text("Dein persönliches Recovery-System\nfür die Fitbit Air")
+                Text("Your personal recovery system\nfor the Fitbit Air")
                     .font(.headline)
                     .foregroundStyle(Theme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -37,14 +37,14 @@ struct OnboardingView: View {
 
                 VStack(alignment: .leading, spacing: 14) {
                     featureRow(icon: "arrow.clockwise.heart.fill", color: Theme.green,
-                               title: "Recovery-Score",
-                               text: "HRV, Ruhepuls, Schlaf und Atemfrequenz gegen deine persönliche Baseline.")
+                               title: "Recovery Score",
+                               text: "HRV, resting HR, sleep, and respiratory rate against your personal baseline.")
                     featureRow(icon: "flame.fill", color: Theme.strainBlue,
                                title: "Strain 0–21",
-                               text: "Kardiovaskuläre Belastung aus deinen Herzfrequenz-Zonen, wie bei Whoop.")
+                               text: "Cardiovascular load from your heart rate zones, like Whoop.")
                     featureRow(icon: "bed.double.fill", color: Theme.sleepPurple,
-                               title: "Schlafbedarf & -schuld",
-                               text: "Wie viel Schlaf du heute wirklich brauchst – inklusive Phasen-Analyse.")
+                               title: "Sleep Need & Debt",
+                               text: "How much sleep you really need today – including stage analysis.")
                 }
                 .padding(24)
 
@@ -54,7 +54,7 @@ struct OnboardingView: View {
                     Button {
                         showConnectSheet = true
                     } label: {
-                        Text("Mit Google Health verbinden")
+                        Text("Connect to Google Health")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 15)
@@ -64,7 +64,7 @@ struct OnboardingView: View {
                     Button {
                         model.startDemo()
                     } label: {
-                        Text("Erstmal mit Demo-Daten starten")
+                        Text("Start with demo data for now")
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
@@ -99,7 +99,7 @@ struct OnboardingView: View {
     }
 }
 
-/// Verbindungs-Sheet: Client-ID eingeben + OAuth-Flow starten.
+/// Connection sheet: Enter client ID + start OAuth flow.
 struct ConnectSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -110,14 +110,14 @@ struct ConnectSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("z. B. 1234567890-abc.apps.googleusercontent.com", text: $model.clientID, axis: .vertical)
+                    TextField("e.g. 1234567890-abc.apps.googleusercontent.com", text: $model.clientID, axis: .vertical)
                         .font(.footnote.monospaced())
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
                 } header: {
-                    Text("iOS-Client-ID (Google Cloud)")
+                    Text("iOS Client ID (Google Cloud)")
                 } footer: {
-                    Text("Einmalig nötig: In der Google Cloud Console die **Google Health API** aktivieren, einen OAuth-Client vom Typ **iOS** anlegen und die Client-ID hier einfügen. Schritt-für-Schritt-Anleitung in der README des Projekts.")
+                    Text("Required once: Enable the **Google Health API** in the Google Cloud Console, create an OAuth client of type **iOS**, and paste the client ID here. Step-by-step instructions in the project's README.")
                 }
 
                 Section {
@@ -135,13 +135,13 @@ struct ConnectSheet: View {
                             if working {
                                 ProgressView().padding(.trailing, 6)
                             }
-                            Text(working ? "Verbinde…" : "Bei Google anmelden")
+                            Text(working ? "Connecting…" : "Sign in with Google")
                         }
                     }
                     .disabled(working || !model.oauthConfig.isValid)
                 } footer: {
                     if !model.clientID.isEmpty && !model.oauthConfig.isValid {
-                        Text("Die Client-ID muss auf .apps.googleusercontent.com enden.")
+                        Text("The client ID must end with .apps.googleusercontent.com.")
                             .foregroundStyle(Theme.red)
                     }
                 }
@@ -158,7 +158,7 @@ struct ConnectSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Abbrechen") { dismiss() }
+                    Button("Cancel") { dismiss() }
                 }
             }
         }

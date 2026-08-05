@@ -14,7 +14,7 @@ public enum DayKey {
         formatter.string(from: date)
     }
 
-    /// Liefert Mitternacht (lokal) des Tages.
+    /// Returns midnight (local) of the day.
     public static func date(from key: String) -> Date? {
         formatter.date(from: key)
     }
@@ -31,7 +31,7 @@ public enum DayKey {
         return string(from: shifted)
     }
 
-    /// Alle Tage von `from` bis `to` (inklusive), chronologisch.
+    /// All days from `from` to `to` (inclusive), chronologically.
     public static func keys(from: String, to: String) -> [String] {
         guard var current = date(from: from), let endDate = date(from: to), current <= endDate else {
             return []
@@ -52,7 +52,7 @@ public enum DayKey {
         string(from: sampleTime.addingTimeInterval(6 * 3600))
     }
 
-    /// Anzahl Tage zwischen zwei Keys (b - a).
+    /// Number of days between two keys (b - a).
     public static func distance(from a: String, to b: String) -> Int? {
         guard let da = date(from: a), let db = date(from: b) else { return nil }
         return Calendar.current.dateComponents([.day], from: da, to: db).day

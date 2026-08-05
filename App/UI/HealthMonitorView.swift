@@ -9,7 +9,7 @@ struct HealthMonitorView: View {
                 Theme.bg.ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 14) {
-                        Text("Nächtliche Messwerte im Vergleich zu deinem persönlichen 30-Tage-Baseline-Band (± 1,65 SD). Ausreißer sind frühe Warnzeichen für Krankheit oder Übertraining.")
+                        Text("Nightly metrics compared to your personal 30-day baseline band (± 1.65 SD). Outliers are early warning signs of illness or overtraining.")
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -19,14 +19,14 @@ struct HealthMonitorView: View {
                                 metricCard(status)
                             }
                         } else {
-                            EmptyDataHint(text: "Keine Daten vorhanden.")
+                            EmptyDataHint(text: "No data available.")
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Gesundheit")
+            .navigationTitle("Health")
         }
     }
 
@@ -55,11 +55,11 @@ struct HealthMonitorView: View {
 
                 if let lower = status.lowerBound {
                     let upperText = status.upperBound.map { status.kind.formatted($0) } ?? "∞"
-                    Text("Normalbereich: \(status.kind.formatted(lower)) – \(upperText) \(status.kind.unit)")
+                    Text("Normal range: \(status.kind.formatted(lower)) – \(upperText) \(status.kind.unit)")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 } else if let baseline = status.baseline {
-                    Text("Baseline: Ø \(status.kind.formatted(baseline.mean)) \(status.kind.unit) (\(baseline.count) Nächte)")
+                    Text("Baseline: Ø \(status.kind.formatted(baseline.mean)) \(status.kind.unit) (\(baseline.count) nights)")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }

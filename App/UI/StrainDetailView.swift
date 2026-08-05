@@ -10,25 +10,25 @@ struct StrainDetailView: View {
                 VStack(spacing: 14) {
                     if let strain = model.strain(for: model.selectedDayKey) {
                         heroCard(strain)
-                        SectionCard("Zeit in Intensitätszonen") {
+                        SectionCard("Time in Intensity Zones") {
                             if strain.zoneMinutes.reduce(0, +) > 0 {
                                 ZoneBarsView(zoneMinutes: strain.zoneMinutes)
                             } else {
-                                EmptyDataHint(text: "Keine Belastungszeit oberhalb der Grundintensität.")
+                                EmptyDataHint(text: "No load time above baseline intensity.")
                             }
                         }
                         hrCard
                         workoutsCard
                         trendCard
                     } else {
-                        EmptyDataHint(text: "Keine Belastungsdaten für diesen Tag.")
+                        EmptyDataHint(text: "No strain data for this day.")
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
         }
-        .navigationTitle("Belastung")
+        .navigationTitle("Strain")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -44,7 +44,7 @@ struct StrainDetailView: View {
                         Text(String(format: "%.1f", strain.strain))
                             .font(.system(size: 46, weight: .bold, design: .rounded))
                             .foregroundStyle(Theme.textPrimary)
-                        Text("Strain von 21")
+                        Text("Strain out of 21")
                             .font(.caption)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -54,12 +54,12 @@ struct StrainDetailView: View {
 
                 HStack(spacing: 20) {
                     if let avg = strain.avgHR {
-                        StatCell(label: "Ø Puls", value: "\(Int(avg.rounded()))")
+                        StatCell(label: "Avg HR", value: "\(Int(avg.rounded()))")
                     }
                     if let peak = strain.peakHR {
-                        StatCell(label: "Max. Puls", value: "\(Int(peak.rounded()))")
+                        StatCell(label: "Max HR", value: "\(Int(peak.rounded()))")
                     }
-                    StatCell(label: "Aktive Last", value: String(format: "%.0f", strain.rawLoad))
+                    StatCell(label: "Active Load", value: String(format: "%.0f", strain.rawLoad))
                 }
 
                 Text(strainText(strain.strain))
@@ -72,18 +72,18 @@ struct StrainDetailView: View {
 
     private func strainText(_ value: Double) -> String {
         switch value {
-        case ..<6: return "Leichter Tag – gut für Erholung."
-        case ..<10: return "Moderate Belastung – Alltag mit etwas Aktivität."
-        case ..<14: return "Solides Training – achte heute Abend auf Schlaf."
-        case ..<18: return "Harte Belastung – dein Schlafbedarf steigt spürbar."
-        default: return "Maximale Belastung – plane aktiv Erholung ein."
+        case ..<6: return "Light day – good for recovery."
+        case ..<10: return "Moderate strain – everyday life with some activity."
+        case ..<14: return "Solid training – pay attention to sleep tonight."
+        case ..<18: return "Hard strain – your sleep need increases noticeably."
+        default: return "Maximum strain – actively plan recovery."
         }
     }
 
     @ViewBuilder
     private var hrCard: some View {
         if let record = model.selectedRecord, !record.hrSamples.isEmpty {
-            SectionCard("Herzfrequenz-Tagesverlauf") {
+            SectionCard("Heart Rate Daily Trend") {
                 HRDayChart(samples: record.hrSamples)
             }
         }
@@ -104,7 +104,7 @@ struct StrainDetailView: View {
                                 Text(workout.name)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Theme.textPrimary)
-                                Text("\(Fmt.clock(workout.start)) Uhr · \(Int(workout.durationMinutes.rounded())) min"
+                                Text("\(Fmt.clock(workout.start)) · \(Int(workout.durationMinutes.rounded())) min"
                                      + (workout.averageHR.map { " · Ø \(Int($0.rounded()))" } ?? ""))
                                     .font(.caption)
                                     .foregroundStyle(Theme.textSecondary)
@@ -128,14 +128,14 @@ struct StrainDetailView: View {
     }
 
     private var trendCard: some View {
-        SectionCard("Strain – letzte 14 Tage") {
+        SectionCard("Strain – last 14 days") {
             let points = trendPoints(model.trend(14) { record in
                 model.strain(for: record.date)?.strain
             })
             if points.count >= 2 {
                 StrainLineChart(points: points)
             } else {
-                EmptyDataHint(text: "Noch zu wenige Tage für den Trend.")
+                EmptyDataHint(text: "Not enough days for the trend yet.")
             }
         }
     }

@@ -12,10 +12,10 @@ struct TrendsView: View {
                 Theme.bg.ignoresSafeArea()
                 ScrollView {
                     VStack(spacing: 14) {
-                        Picker("Zeitraum", selection: $range) {
-                            Text("7 Tage").tag(7)
-                            Text("30 Tage").tag(30)
-                            Text("90 Tage").tag(90)
+                        Picker("Timeframe", selection: $range) {
+                            Text("7 Days").tag(7)
+                            Text("30 Days").tag(30)
+                            Text("90 Days").tag(90)
                         }
                         .pickerStyle(.segmented)
 
@@ -26,7 +26,7 @@ struct TrendsView: View {
                             hrvCard
                             rhrCard
                         } else {
-                            EmptyDataHint(text: "Keine Daten vorhanden.")
+                            EmptyDataHint(text: "No data available.")
                         }
                     }
                     .padding(.horizontal, 16)
@@ -37,7 +37,7 @@ struct TrendsView: View {
         }
     }
 
-    // MARK: - Datenreihen
+    // MARK: - Data Series
 
     private var recoveryPoints: [TrendPoint] {
         trendPoints(model.trend(range, endingAt: today) { record in
@@ -72,10 +72,10 @@ struct TrendsView: View {
         trendPoints(model.trend(range, endingAt: today) { $0.restingHR })
     }
 
-    // MARK: - Karten
+    // MARK: - Cards
 
     private var summaryCard: some View {
-        SectionCard("Durchschnitt (\(range) Tage)") {
+        SectionCard("Average (\(range) days)") {
             HStack(spacing: 12) {
                 StatCell(
                     label: "Recovery",
@@ -88,7 +88,7 @@ struct TrendsView: View {
                     color: Theme.strainBlue
                 )
                 StatCell(
-                    label: "Schlaf",
+                    label: "Sleep",
                     value: average(sleepPoints).map { "\(Fmt.hm($0)) h" } ?? "–",
                     color: Theme.sleepPurple
                 )
@@ -110,21 +110,21 @@ struct TrendsView: View {
         SectionCard("Recovery vs. Strain") {
             if recoveryPoints.count >= 2 {
                 RecoveryStrainChart(recovery: recoveryPoints, strain: strainPoints)
-                Text("Ideal: hohe Recovery an Tagen vor hohem Strain. Dauerhaft hoher Strain bei niedriger Recovery deutet auf Übertraining hin.")
+                Text("Ideal: high recovery on days before high strain. Consistently high strain with low recovery indicates overtraining.")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
             } else {
-                EmptyDataHint(text: "Noch zu wenige Tage.")
+                EmptyDataHint(text: "Not enough days yet.")
             }
         }
     }
 
     private var sleepCard: some View {
-        SectionCard("Schlafdauer vs. Bedarf") {
+        SectionCard("Sleep Duration vs. Need") {
             if sleepPoints.count >= 2 {
                 SleepTrendChart(slept: sleepPoints, need: needPoints)
             } else {
-                EmptyDataHint(text: "Noch zu wenige Nächte.")
+                EmptyDataHint(text: "Not enough nights yet.")
             }
         }
     }
@@ -139,13 +139,13 @@ struct TrendsView: View {
                     isLogBaseline: true
                 )
             } else {
-                EmptyDataHint(text: "Noch zu wenige HRV-Werte.")
+                EmptyDataHint(text: "Not enough HRV values yet.")
             }
         }
     }
 
     private var rhrCard: some View {
-        SectionCard("Ruhepuls") {
+        SectionCard("Resting HR") {
             if rhrPoints.count >= 2 {
                 BaselineLineChart(
                     points: rhrPoints,
@@ -153,7 +153,7 @@ struct TrendsView: View {
                     color: Theme.red
                 )
             } else {
-                EmptyDataHint(text: "Noch zu wenige Ruhepuls-Werte.")
+                EmptyDataHint(text: "Not enough resting HR values yet.")
             }
         }
     }

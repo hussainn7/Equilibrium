@@ -108,11 +108,11 @@ public enum AuthError: Error, LocalizedError, Sendable {
         case .notConnected:
             return "Nicht mit Google verbunden."
         case .invalidClientID:
-            return "Ungültige Client-ID. Erwartet wird eine iOS-Client-ID der Form …apps.googleusercontent.com."
+            return "Invalid client ID. Expected is an iOS client ID like ...apps.googleusercontent.com."
         case .exchangeFailed(let message):
             return "Token-Austausch fehlgeschlagen: \(message)"
         case .refreshExpired:
-            return "Die Google-Anmeldung ist abgelaufen (im Testing-Modus laufen Refresh-Tokens nach 7 Tagen ab). Bitte neu verbinden."
+            return "The Google login has expired (in testing mode, refresh tokens expire after 7 days). Please reconnect."
         case .network(let message):
             return "Netzwerkfehler: \(message)"
         }
@@ -273,7 +273,7 @@ public final class GoogleAuth: @unchecked Sendable {
 
     private func tokenRequest(_ params: [String: String]) async throws -> TokenResponse {
         guard let url = URL(string: "https://oauth2.googleapis.com/token") else {
-            throw AuthError.network("Ungültige Token-URL")
+            throw AuthError.network("Invalid token URL")
         }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

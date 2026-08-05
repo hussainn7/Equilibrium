@@ -7,20 +7,20 @@ public enum RecoveryZone: String, Sendable {
 public struct RecoveryComponent: Sendable {
     public let key: String
     public let label: String
-    /// Teil-Score 0–1.
+    /// Partial score 0–1.
     public let score01: Double
-    /// Normalisiertes Gewicht (Summe aller Komponenten = 1).
+    /// Normalized weight (sum of all components = 1).
     public let weight: Double
     public let detail: String
 }
 
 public struct RecoveryResult: Sendable {
     public let dateKey: String
-    /// Recovery-Score 1–99 %.
+    /// Recovery score 1–99 %.
     public let score: Int
     public let zone: RecoveryZone
     public let components: [RecoveryComponent]
-    /// True, solange die Baselines (< 5 Nächte) noch nicht belastbar sind.
+    /// True as long as baselines (< 5 nights) are not yet reliable.
     public let calibrating: Bool
     public let hrvValue: Double?
     public let hrvBaseline: Baseline?
@@ -28,9 +28,9 @@ public struct RecoveryResult: Sendable {
     public let rhrBaseline: Baseline?
 }
 
-/// Whoop-artiger Recovery-Score: HRV und Ruhepuls werden gegen die persönliche
-/// 30-Tage-Baseline verglichen (HRV logarithmiert, da rechtsschief verteilt),
-/// dazu Schlafperformance und Atemfrequenz-Abweichung.
+/// Whoop-like recovery score: HRV and resting HR are compared against personal
+/// 30-day baseline (HRV logged, as it is right-skewed),
+/// plus sleep performance and respiratory rate deviation.
 public enum RecoveryEngine {
     public static let weights: [String: Double] = [
         "hrv": 0.40,
@@ -74,20 +74,20 @@ public enum RecoveryEngine {
 
         if let rhr = today.restingHR {
             let score: Double
-            var detail = String(format: "%.0f S/min", rhr)
+            var detail = String(format: "%.0f bpm", rhr)
             if let baseline = rhrBaseline {
                 let z = baseline.z(rhr, minSD: 0.8)
                 score = Stats.logistic(-z * 1.1)
-                detail = String(format: "%.0f S/min · Ø %.0f", rhr, baseline.mean)
+                detail = String(format: "%.0f bpm · Ø %.0f", rhr, baseline.mean)
             } else {
                 score = 0.5
             }
-            raw.append(("rhr", "Ruhepuls", score, detail))
+            raw.append(("rhr", "Resting HR", score, detail))
         }
 
         if let performance = sleepPerformance {
             let score = Stats.clamp(performance / 100, 0.1, 1.0)
-            raw.append(("sleep", "Schlaf", score, String(format: "%.0f %% Performance", performance)))
+            raw.append(("sleep", "Sleep", score, String(format: "%.0f %% Performance", performance)))
         }
 
         if let resp = today.respiratoryRate {
@@ -100,7 +100,7 @@ public enum RecoveryEngine {
             } else {
                 score = 0.65
             }
-            raw.append(("resp", "Atemfrequenz", score, detail))
+            raw.append(("resp", "Respiratory Rate", score, detail))
         }
 
         let totalWeight = raw.reduce(0) { $0 + (weights[$1.key] ?? 0) }
@@ -122,7 +122,7 @@ public enum RecoveryEngine {
 
         var score = weighted * 100
 
-        // Abzüge für Warnsignale
+        // Deductions for warning signs
         if let spo2Min = today.spo2Min, spo2Min < 90 {
             score -= 7
         }

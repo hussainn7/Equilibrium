@@ -2,12 +2,12 @@ import Foundation
 import Observation
 import AuthenticationServices
 
-/// Zentrales App-Modell: hält Store, Auth, Einstellungen und die berechneten
-/// Whoop-Metriken (Recovery, Strain, Schlaf) für alle Views bereit.
+/// Central app model: holds store, auth, settings, and the calculated
+/// Whoop metrics (recovery, strain, sleep) for all views.
 @MainActor
 @Observable
 final class AppModel {
-    // MARK: - Einstellungen (in UserDefaults persistiert)
+    // MARK: - Settings (persisted in UserDefaults)
 
     private enum Keys {
         static let clientID = "google.clientID"
@@ -48,7 +48,7 @@ final class AppModel {
             recomputeAll()
         }
     }
-    /// 0 = automatisch (Tanaka-Formel)
+    /// 0 = automatic (Tanaka formula)
     var maxHROverride: Double {
         didSet {
             defaults.set(maxHROverride, forKey: Keys.maxHR)
@@ -65,7 +65,7 @@ final class AppModel {
         }
     }
 
-    // MARK: - Laufzeit-Zustand
+    // MARK: - Runtime State
 
     private(set) var syncing = false
     private(set) var syncMessage = ""
@@ -75,7 +75,7 @@ final class AppModel {
     var selectedDayKey: String
     private(set) var profileName: String?
 
-    // MARK: - Daten & abgeleitete Metriken
+    // MARK: - Data & Derived Metrics
 
     let store: MetricsStore
     let auth = GoogleAuth()
@@ -105,7 +105,7 @@ final class AppModel {
         recomputeAll()
     }
 
-    // MARK: - Abgeleitete Konfiguration
+    // MARK: - Derived Configuration
 
     var oauthConfig: GoogleOAuthConfig {
         GoogleOAuthConfig(clientID: clientID)
@@ -133,7 +133,7 @@ final class AppModel {
         store.sortedKeys
     }
 
-    // MARK: - Zugriff für Views
+    // MARK: - Access for Views
 
     func record(for key: String) -> DayRecord? {
         store.days[key]
@@ -155,14 +155,14 @@ final class AppModel {
         record(for: selectedDayKey)
     }
 
-    /// Health-Monitor-Status für den ausgewählten Tag.
+    /// Health monitor status for the selected day.
     var healthStatuses: [HealthMetricStatus] {
         guard let record = selectedRecord else { return [] }
         let history = store.history(before: selectedDayKey, days: 45)
         return HealthMonitor.evaluate(today: record, history: history)
     }
 
-    /// Werte einer Metrik der letzten `count` Tage bis zum ausgewählten Tag.
+    /// Values of a metric for the last `count` days up to the selected day.
     func trend(_ count: Int, endingAt key: String? = nil, _ value: (DayRecord) -> Double?) -> [(key: String, value: Double)] {
         let end = key ?? selectedDayKey
         let start = DayKey.addDays(end, -(count - 1))
@@ -172,7 +172,7 @@ final class AppModel {
         }
     }
 
-    // MARK: - Neuberechnung
+    // MARK: - Recomputation
 
     func recomputeAll() {
         var strains: [String: StrainResult] = [:]
@@ -186,7 +186,7 @@ final class AppModel {
 
         sleepAnalyses = SleepEngine.analyze(days: store.days, config: sleepConfig, strainByDay: strainScalar)
 
-        // Workout-Strains in die Records schreiben
+        // Write workout strains into the records
         for (_, record) in store.days where !record.workouts.isEmpty {
             var updated = record
             for index in updated.workouts.indices {
@@ -200,7 +200,7 @@ final class AppModel {
             store.upsert(updated)
         }
 
-        // Recovery chronologisch mit wachsender Historie
+        // Recovery chronologically with growing history
         var recoveries: [String: RecoveryResult] = [:]
         var history: [DayRecord] = []
         let keys = store.sortedKeys
@@ -222,7 +222,7 @@ final class AppModel {
         }
     }
 
-    // MARK: - Aktionen
+    // MARK: - Actions
 
     func startDemo() {
         store.replaceAll(DemoData.generate(daysBack: 120, seed: 42))
@@ -244,13 +244,13 @@ final class AppModel {
         let pkce = PKCE()
         let state = UUID().uuidString
         guard let url = auth.authorizationURL(config: config, pkce: pkce, state: state) else {
-            lastError = "Autorisierungs-URL konnte nicht erstellt werden."
+            lastError = "Authorization URL could not be created."
             return
         }
         do {
             let callback = try await WebAuthenticator.shared.authenticate(url: url, callbackScheme: scheme)
             guard let code = GoogleAuth.extractCode(from: callback, expectedState: state) else {
-                lastError = "Kein gültiger Autorisierungscode erhalten."
+                lastError = "No valid authorization code received."
                 return
             }
             _ = try await auth.exchange(code: code, pkce: pkce, config: config)
@@ -280,7 +280,7 @@ final class AppModel {
             return
         }
         syncing = true
-        syncMessage = "Starte…"
+        syncMessage = "Starting…"
         syncFraction = 0
         defer { syncing = false }
 
@@ -305,7 +305,7 @@ final class AppModel {
         recomputeAll()
 
         if outcome.hadErrors {
-            lastError = "Sync mit Warnungen abgeschlossen – Details im Sync-Protokoll."
+            lastError = "Sync completed with warnings – details in the sync log."
         }
     }
 

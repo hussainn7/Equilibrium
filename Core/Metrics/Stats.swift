@@ -1,6 +1,6 @@
 import Foundation
 
-/// Rollierende Baseline (Mittelwert ± Standardabweichung) einer Metrik.
+/// Rolling baseline (mean ± standard deviation) of a metric.
 public struct Baseline: Sendable {
     public let mean: Double
     public let sd: Double
@@ -12,7 +12,7 @@ public struct Baseline: Sendable {
         self.count = count
     }
 
-    /// Ab 5 Datenpunkten gilt die Baseline als belastbar.
+    /// From 5 data points, the baseline is considered reliable.
     public var isReliable: Bool { count >= 5 }
 
     public func z(_ value: Double, minSD: Double = 0.0001) -> Double {
@@ -46,7 +46,7 @@ public enum Stats {
         return sorted[lower] * (1 - fraction) + sorted[upper] * fraction
     }
 
-    /// Baseline aus einer Werteliste; nil bei weniger als 3 Punkten.
+    /// Baseline from a list of values; nil if less than 3 points.
     public static func baseline(_ values: [Double]) -> Baseline? {
         guard values.count >= 3 else { return nil }
         return Baseline(mean: mean(values), sd: standardDeviation(values), count: values.count)

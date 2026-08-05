@@ -14,7 +14,7 @@ struct RecoveryDetailView: View {
                         hrvCard(recovery)
                         rhrCard(recovery)
                     } else {
-                        EmptyDataHint(text: "Keine Recovery-Daten für diesen Tag.")
+                        EmptyDataHint(text: "No recovery data for this day.")
                     }
                 }
                 .padding(.horizontal, 16)
@@ -51,7 +51,7 @@ struct RecoveryDetailView: View {
                     .multilineTextAlignment(.center)
 
                 if recovery.calibrating {
-                    PillBadge(text: "Baseline kalibriert noch", color: Theme.yellow)
+                    PillBadge(text: "Baseline still calibrating", color: Theme.yellow)
                 }
             }
         }
@@ -60,16 +60,16 @@ struct RecoveryDetailView: View {
     private func zoneText(_ zone: RecoveryZone) -> String {
         switch zone {
         case .green:
-            return "Dein Körper ist erholt – ein guter Tag für intensive Belastung."
+            return "Your body is recovered – a good day for intense strain."
         case .yellow:
-            return "Mäßig erholt. Moderates Training ist okay, höre auf deinen Körper."
+            return "Moderately recovered. Moderate training is okay, listen to your body."
         case .red:
-            return "Dein Körper braucht Erholung. Heute besser regenerieren."
+            return "Your body needs recovery. Better to regenerate today."
         }
     }
 
     private func componentsCard(_ recovery: RecoveryResult) -> some View {
-        SectionCard("Einflussfaktoren") {
+        SectionCard("Influencing Factors") {
             VStack(spacing: 12) {
                 ForEach(recovery.components, id: \.key) { component in
                     VStack(alignment: .leading, spacing: 4) {
@@ -77,7 +77,7 @@ struct RecoveryDetailView: View {
                             Text(component.label)
                                 .font(.subheadline)
                                 .foregroundStyle(Theme.textPrimary)
-                            Text("· Gewicht \(Int((component.weight * 100).rounded())) %")
+                            Text("· Weight \(Int((component.weight * 100).rounded())) %")
                                 .font(.caption2)
                                 .foregroundStyle(Theme.textSecondary)
                             Spacer()
@@ -107,7 +107,7 @@ struct RecoveryDetailView: View {
     }
 
     private func hrvCard(_ recovery: RecoveryResult) -> some View {
-        SectionCard("HRV – letzte 30 Tage") {
+        SectionCard("HRV – last 30 days") {
             let points = trendPoints(model.trend(30) { $0.hrvRmssd })
             if points.count >= 2 {
                 BaselineLineChart(
@@ -116,17 +116,17 @@ struct RecoveryDetailView: View {
                     color: Theme.teal,
                     isLogBaseline: true
                 )
-                Text("Band = persönliche Baseline ± 1 SD. Höher als das Band ist gut, darunter deutet auf Belastung hin.")
+                Text("Band = personal baseline ± 1 SD. Higher than the band is good, below indicates strain.")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
             } else {
-                EmptyDataHint(text: "Noch zu wenige HRV-Nächte.")
+                EmptyDataHint(text: "Not enough HRV nights yet.")
             }
         }
     }
 
     private func rhrCard(_ recovery: RecoveryResult) -> some View {
-        SectionCard("Ruhepuls – letzte 30 Tage") {
+        SectionCard("Resting HR – last 30 days") {
             let points = trendPoints(model.trend(30) { $0.restingHR })
             if points.count >= 2 {
                 BaselineLineChart(
@@ -134,11 +134,11 @@ struct RecoveryDetailView: View {
                     baseline: recovery.rhrBaseline,
                     color: Theme.red
                 )
-                Text("Ein erhöhter Ruhepuls gegenüber der Baseline ist ein frühes Zeichen für Stress, Krankheit oder unvollständige Erholung.")
+                Text("An elevated resting HR compared to the baseline is an early sign of stress, illness, or incomplete recovery.")
                     .font(.caption2)
                     .foregroundStyle(Theme.textSecondary)
             } else {
-                EmptyDataHint(text: "Noch zu wenige Ruhepuls-Werte.")
+                EmptyDataHint(text: "Not enough resting HR values yet.")
             }
         }
     }

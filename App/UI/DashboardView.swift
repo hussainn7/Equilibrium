@@ -11,8 +11,8 @@ struct DashboardView: View {
                     content
                 } else {
                     EmptyDataHint(text: model.isConnected
-                        ? "Noch keine Daten – starte oben rechts eine Synchronisierung."
-                        : "Keine Daten vorhanden. Verbinde Google Health oder starte den Demo-Modus unter „Mehr“.")
+                        ? "No data yet – start a sync in the top right."
+                        : "No data available. Connect Google Health or start demo mode under 'More'.")
                 }
             }
             .navigationTitle(Fmt.dayTitle(model.selectedDayKey))
@@ -144,27 +144,27 @@ struct DashboardView: View {
                                 }
                             }
                             if recovery.calibrating {
-                                Text("Baseline kalibriert noch (< 5 Nächte)")
+                                Text("Baseline still calibrating (< 5 nights)")
                                     .font(.caption2)
                                     .foregroundStyle(Theme.yellow)
                             }
                         }
                     }
                 } else {
-                    EmptyDataHint(text: "Keine Recovery-Daten für diesen Tag.")
+                    EmptyDataHint(text: "No recovery data for this day.")
                 }
             }
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Schlaf
-
+    // MARK: - Sleep
+    
     private var sleepCard: some View {
         NavigationLink {
             SleepDetailView()
         } label: {
-            SectionCard("Schlaf") {
+            SectionCard("Sleep") {
                 if let sleep = model.sleep(for: model.selectedDayKey), sleep.hasData {
                     HStack(spacing: 18) {
                         RingGauge(
@@ -184,27 +184,27 @@ struct DashboardView: View {
                         .frame(width: 92, height: 92)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("\(Fmt.hm(sleep.sleptMinutes)) von \(Fmt.hm(sleep.needMinutes)) h")
+                            Text("\(Fmt.hm(sleep.sleptMinutes)) of \(Fmt.hm(sleep.needMinutes)) h")
                                 .font(.system(.title3, design: .rounded).weight(.bold))
                                 .foregroundStyle(Theme.textPrimary)
                             if let bed = sleep.bedTime, let wake = sleep.wakeTime {
-                                Text("\(Fmt.clock(bed)) – \(Fmt.clock(wake)) Uhr")
+                                Text("\(Fmt.clock(bed)) – \(Fmt.clock(wake))")
                                     .font(.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
                             if sleep.debtAfterMinutes > 5 {
-                                Text("Schlafschuld: \(Fmt.hm(sleep.debtAfterMinutes)) h")
+                                Text("Sleep debt: \(Fmt.hm(sleep.debtAfterMinutes)) h")
                                     .font(.caption)
                                     .foregroundStyle(Theme.orange)
                             } else {
-                                Text("Keine Schlafschuld")
+                                Text("No sleep debt")
                                     .font(.caption)
                                     .foregroundStyle(Theme.green)
                             }
                         }
                     }
                 } else {
-                    EmptyDataHint(text: "Kein Schlaf für diesen Tag erfasst.")
+                    EmptyDataHint(text: "No sleep recorded for this day.")
                 }
             }
         }
@@ -217,7 +217,7 @@ struct DashboardView: View {
         NavigationLink {
             StrainDetailView()
         } label: {
-            SectionCard("Tagesbelastung") {
+            SectionCard("Daily Strain") {
                 if let strain = model.strain(for: model.selectedDayKey) {
                     HStack(spacing: 18) {
                         ArcGauge(
@@ -229,7 +229,7 @@ struct DashboardView: View {
                                 Text(String(format: "%.1f", strain.strain))
                                     .font(.system(size: 30, weight: .bold, design: .rounded))
                                     .foregroundStyle(Theme.textPrimary)
-                                Text("von 21")
+                                Text("out of 21")
                                     .font(.caption2)
                                     .foregroundStyle(Theme.textSecondary)
                             }
@@ -238,7 +238,7 @@ struct DashboardView: View {
 
                         VStack(alignment: .leading, spacing: 6) {
                             let active = strain.zoneMinutes.dropFirst(2).reduce(0, +)
-                            Text("\(Int(active.rounded())) min fordernd oder härter")
+                            Text("\(Int(active.rounded())) min hard or harder")
                                 .font(.caption)
                                 .foregroundStyle(Theme.textSecondary)
                             if let record = model.selectedRecord, !record.workouts.isEmpty {
@@ -259,32 +259,32 @@ struct DashboardView: View {
                                     }
                                 }
                             } else {
-                                Text("Kein Workout erfasst")
+                                Text("No workout recorded")
                                     .font(.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
                             if let peak = strain.peakHR {
-                                Text("Max. Puls: \(Int(peak.rounded()))")
+                                Text("Max HR: \(Int(peak.rounded()))")
                                     .font(.caption)
                                     .foregroundStyle(Theme.textSecondary)
                             }
                         }
                     }
                 } else {
-                    EmptyDataHint(text: "Keine Belastungsdaten für diesen Tag.")
+                    EmptyDataHint(text: "No strain data for this day.")
                 }
             }
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Health-Monitor
+    // MARK: - Health Monitor
 
     private var healthCard: some View {
-        SectionCard("Health-Monitor") {
+        SectionCard("Health Monitor") {
             let statuses = model.healthStatuses
             if statuses.allSatisfy({ $0.state == .noData }) {
-                EmptyDataHint(text: "Keine nächtlichen Messwerte für diesen Tag.")
+                EmptyDataHint(text: "No nightly metrics for this day.")
             } else {
                 VStack(spacing: 10) {
                     ForEach(statuses, id: \.kind) { status in
@@ -315,9 +315,9 @@ struct DashboardView: View {
     private var footer: some View {
         VStack(spacing: 4) {
             if let lastSync = model.lastSyncAt {
-                Text("Letzter Sync: \(Fmt.relative(lastSync))")
+                Text("Last sync: \(Fmt.relative(lastSync))")
             } else if model.demoMode {
-                Text("Demo-Modus – generierte Beispieldaten")
+                Text("Demo mode – generated sample data")
             }
         }
         .font(.caption2)
@@ -326,7 +326,7 @@ struct DashboardView: View {
     }
 }
 
-// MARK: - Tages-Chips
+// MARK: - Day Chips
 
 struct DayChips: View {
     @Environment(AppModel.self) private var model

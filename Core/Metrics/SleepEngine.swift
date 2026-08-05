@@ -1,13 +1,13 @@
 import Foundation
 
 public struct SleepEngineConfig: Sendable {
-    /// Basis-Schlafbedarf in Minuten (Standard: 7 h 36 min, wie Whoop-Default).
+    /// Baseline sleep need in minutes (default: 7 h 36 min, like Whoop default).
     public var baselineNeedMinutes: Double
-    /// Anteil der Schlafschuld, der pro Nacht zusätzlich eingefordert wird.
+    /// Fraction of sleep debt demanded additionally per night.
     public var debtRepayFraction: Double
-    /// Obergrenze der akkumulierten Schlafschuld.
+    /// Upper limit of accumulated sleep debt.
     public var maxDebtMinutes: Double
-    /// Maximaler Bedarfs-Aufschlag durch hohen Vortages-Strain.
+    /// Maximum need boost from high previous day strain.
     public var strainNeedBoostMaxMinutes: Double
 
     public init(
@@ -28,11 +28,11 @@ public struct SleepAnalysis: Sendable {
     public let sleptMinutes: Double
     public let napMinutes: Double
     public let needMinutes: Double
-    /// Schlafperformance 0–100 (geschlafene Zeit / Bedarf).
+    /// Sleep performance 0–100 (slept time / need).
     public let performance: Double
-    /// Schlafschuld NACH dieser Nacht.
+    /// Sleep debt AFTER this night.
     public let debtAfterMinutes: Double
-    /// Konsistenz der Zubettgeh-/Aufwachzeiten (0–100), nil ohne Historie.
+    /// Consistency of bed/wake times (0–100), nil without history.
     public let consistency: Double?
     public let efficiency: Double?
     public let stageMinutes: [SleepStage: Double]
@@ -46,9 +46,9 @@ public struct SleepAnalysis: Sendable {
 }
 
 public enum SleepEngine {
-    /// Analysiert alle Tage chronologisch und führt Schlafschuld sowie
-    /// Konsistenz-Historie über die gesamte Zeitreihe.
-    /// `strainByDay` liefert den Tages-Strain (für den Bedarfs-Aufschlag der Folgenacht).
+    /// Analyzes all days chronologically and tracks sleep debt and
+    /// consistency history over the entire time series.
+    /// `strainByDay` provides the daily strain (for the need boost of the following night).
     public static func analyze(
         days: [String: DayRecord],
         config: SleepEngineConfig = SleepEngineConfig(),
@@ -120,7 +120,7 @@ public enum SleepEngine {
         return result
     }
 
-    /// Minuten seit 12:00 Uhr (verschoben, damit Zeiten um Mitternacht linear bleiben).
+    /// Minutes since 12:00 PM (shifted so times around midnight remain linear).
     private static func shiftedMinutes(of date: Date) -> Double {
         let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
         let minutes = Double((comps.hour ?? 0) * 60 + (comps.minute ?? 0))

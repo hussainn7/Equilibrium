@@ -42,11 +42,11 @@ enum Theme {
 
     static func stageName(_ stage: SleepStage) -> String {
         switch stage {
-        case .awake: return "Wach"
+        case .awake: return "Awake"
         case .rem: return "REM"
-        case .light: return "Leicht"
-        case .deep: return "Tief"
-        case .unknown: return "Unbekannt"
+        case .light: return "Light"
+        case .deep: return "Deep"
+        case .unknown: return "Unknown"
         }
     }
 
@@ -60,11 +60,11 @@ enum Theme {
 
     static func bandLabel(_ state: BandState) -> String {
         switch state {
-        case .inRange: return "im Bereich"
-        case .above: return "erhöht"
-        case .below: return "niedrig"
-        case .noData: return "keine Daten"
-        case .calibrating: return "kalibriert"
+        case .inRange: return "in range"
+        case .above: return "elevated"
+        case .below: return "low"
+        case .noData: return "no data"
+        case .calibrating: return "calibrating"
         }
     }
 }
@@ -81,34 +81,34 @@ extension Color {
     }
 }
 
-/// Formatierungs-Helfer (deutsch).
+/// Formatting helpers.
 enum Fmt {
-    private static let german = Locale(identifier: "de_DE")
+    private static let english = Locale(identifier: "en_US")
 
     private static let clockFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = german
+        f.locale = english
         f.dateFormat = "HH:mm"
         return f
     }()
 
     private static let dayTitleFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = german
-        f.dateFormat = "EEEE, d. MMMM"
+        f.locale = english
+        f.dateFormat = "EEEE, MMMM d"
         return f
     }()
 
     private static let dayShortFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = german
-        f.dateFormat = "EE d.M."
+        f.locale = english
+        f.dateFormat = "EE M/d"
         return f
     }()
 
     private static let weekdayLetterFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = german
+        f.locale = english
         f.dateFormat = "EEEEE"
         return f
     }()
@@ -125,8 +125,8 @@ enum Fmt {
 
     static func dayTitle(_ key: String) -> String {
         guard let date = DayKey.date(from: key) else { return key }
-        if key == DayKey.today() { return "Heute" }
-        if key == DayKey.addDays(DayKey.today(), -1) { return "Gestern" }
+        if key == DayKey.today() { return "Today" }
+        if key == DayKey.addDays(DayKey.today(), -1) { return "Yesterday" }
         return dayTitleFormatter.string(from: date)
     }
 
@@ -146,7 +146,7 @@ enum Fmt {
 
     static func relative(_ date: Date) -> String {
         let f = RelativeDateTimeFormatter()
-        f.locale = german
+        f.locale = english
         f.unitsStyle = .short
         return f.localizedString(for: date, relativeTo: Date())
     }

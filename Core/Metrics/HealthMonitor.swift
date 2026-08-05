@@ -22,11 +22,11 @@ public enum HealthMetricKind: String, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
-        case .restingHR: return "Ruhepuls"
+        case .restingHR: return "Resting HR"
         case .hrv: return "HRV"
-        case .respiratoryRate: return "Atemfrequenz"
+        case .respiratoryRate: return "Respiratory Rate"
         case .spo2: return "SpO₂"
-        case .bodyTemp: return "Hauttemperatur"
+        case .bodyTemp: return "Skin Temperature"
         }
     }
 
@@ -48,7 +48,7 @@ public enum HealthMetricKind: String, CaseIterable, Sendable {
         }
     }
 
-    /// Minimale halbe Bandbreite, damit enge Baselines nicht überempfindlich werden.
+    /// Minimum half bandwidth so tight baselines don't become overly sensitive.
     var minimumHalfWidth: Double {
         switch self {
         case .restingHR: return 3
@@ -69,8 +69,8 @@ public struct HealthMetricStatus: Sendable {
     public let state: BandState
 }
 
-/// Whoop-artiger Health Monitor: Jede Nacht-Metrik wird gegen das persönliche
-/// Baseline-Band (Mittelwert ± 1,65 SD) geprüft.
+/// Whoop-like Health Monitor: Each night metric is checked against the personal
+/// baseline band (mean ± 1.65 SD).
 public enum HealthMonitor {
     public static func evaluate(today: DayRecord, history: [DayRecord]) -> [HealthMetricStatus] {
         HealthMetricKind.allCases.map { kind in
@@ -89,7 +89,7 @@ public enum HealthMonitor {
             var lower: Double? = baseline.mean - halfWidth
             var upper: Double? = baseline.mean + halfWidth
 
-            // SpO₂: nur nach unten kritisch, harte Untergrenze 90 %.
+            // SpO₂: only critical downwards, hard lower limit 90 %.
             if kind == .spo2 {
                 lower = max(90, baseline.mean - halfWidth)
                 upper = nil
