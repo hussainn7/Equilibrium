@@ -1,7 +1,7 @@
 // swift-tools-version:5.9
-// Dev-only manifest: kompiliert die plattformneutrale Core-Schicht auf macOS
-// und führt den Self-Test-Runner aus. Die iOS-App wird über project.yml
-// (xcodegen) gebaut und bindet dieselben Core-Quellen direkt ein.
+// Dev-only manifest: compiles the platform-neutral Core layer on macOS
+// and runs the Self-Test-Runner. The iOS app is built via project.yml
+// (xcodegen) and directly includes the same Core sources.
 import PackageDescription
 
 let package = Package(
