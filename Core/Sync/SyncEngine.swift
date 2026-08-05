@@ -242,34 +242,16 @@ public final class SyncEngine: @unchecked Sendable {
             note("Schritte", Self.describe(error), error: true)
         }
 
-        // 9. Intraday-Herzfrequenz (nur letzte hrDaysBack Tage, 1-min-Downsampling)
-        report("Herzfrequenz laden…")
-        let hrStartKey = DayKey.addDays(todayKey, -(max(1, hrDaysBack) - 1))
-        var hrDayCount = 0
-        for key in DayKey.keys(from: max(hrStartKey, startKey), to: todayKey) {
-            guard let dayStart = DayKey.date(from: key) else { continue }
-            let dayEnd = min(dayStart.addingTimeInterval(24 * 3600), windowEnd)
-            guard dayEnd > dayStart else { continue }
-            do {
-                let samples = try await client.fetchSamples(
-                    type: "heart-rate",
-                    payloadKey: "heartRate",
-                    valueKeys: ["beatsPerMinute", "bpm", "value"],
-                    start: dayStart,
-                    end: dayEnd
-                )
-                guard !samples.isEmpty else { continue }
-                let downsampled = Self.downsampleToMinutes(samples)
-                update(key) { $0.hrSamples = downsampled }
-                hrDayCount += 1
-            } catch {
-                note("Herzfrequenz", "\(key): \(Self.describe(error))", error: true)
-                break // gleicher Fehler würde sich für jeden Tag wiederholen
-            }
-        }
-        if hrDayCount > 0 {
-            note("Herzfrequenz", "\(hrDayCount) Tage Intraday")
-        }
+        // 9. Intraday-Herzfrequenz (Phase 2: parallelized)
+        report("Herzfrequenz laden (Phase 2)…")
+        let hrOutcome = await syncIntradayHeartRate(
+            existingDays: days,
+            hrDaysBack: hrDaysBack,
+            maxConcurrent: 4,
+            progress: progress
+        )
+        days = hrOutcome.updatedDays
+        log.append(contentsOf: hrOutcome.log)
 
         // Ruhepuls-Fallback: 5. Perzentil der nächtlichen HF (00:00–08:00)
         for key in DayKey.keys(from: startKey, to: todayKey) {
@@ -301,6 +283,115 @@ public final class SyncEngine: @unchecked Sendable {
 
         progress?(SyncProgress(message: "Fertig", fraction: 1))
         return SyncOutcome(updatedDays: days, log: log, profile: profile)
+    }
+
+    public func syncIntradayHeartRate(
+        existingDays: [String: DayRecord],
+        hrDaysBack: Int,
+        maxConcurrent: Int = 4,
+        progress: (@Sendable (SyncProgress) -> Void)? = nil
+    ) async -> SyncOutcome {
+        var days = existingDays
+        var log: [SyncLogEntry] = []
+        
+        let todayKey = DayKey.today()
+        let hrStartKey = DayKey.addDays(todayKey, -(max(1, hrDaysBack) - 1))
+        
+        var keysToLoad: [String] = []
+        for key in DayKey.keys(from: hrStartKey, to: todayKey) {
+            if DayRecord.isIntradayComplete(days[key], dayKey: key) {
+                continue
+            }
+            keysToLoad.append(key)
+        }
+        
+        if keysToLoad.isEmpty {
+            return SyncOutcome(updatedDays: days, log: log, profile: nil)
+        }
+        
+        let total = keysToLoad.count
+        var completed = 0
+        let syncStamp = Date()
+        let windowEnd = Date()
+        
+        let client = self.client
+        
+        await withTaskGroup(of: (String, Result<[SamplePoint], Error>).self) { group in
+            var index = 0
+            
+            // Queue initial batch
+            for _ in 0..<maxConcurrent {
+                if index < keysToLoad.count {
+                    let key = keysToLoad[index]
+                    index += 1
+                    let dayStart = DayKey.date(from: key)!
+                    let dayEnd = min(dayStart.addingTimeInterval(24 * 3600), windowEnd)
+                    
+                    group.addTask {
+                        do {
+                            let samples = try await client.fetchSamples(
+                                type: "heart-rate",
+                                payloadKey: "heartRate",
+                                valueKeys: ["beatsPerMinute", "bpm", "value"],
+                                start: dayStart,
+                                end: dayEnd
+                            )
+                            return (key, .success(samples))
+                        } catch {
+                            return (key, .failure(error))
+                        }
+                    }
+                }
+            }
+            
+            // Process completed and queue next
+            for await (key, result) in group {
+                completed += 1
+                progress?(SyncProgress(message: "HR loading (\(completed)/\(total) days)", fraction: Double(completed) / Double(total)))
+                
+                switch result {
+                case .success(let samples):
+                    var record = days[key] ?? DayRecord(date: key)
+                    if !samples.isEmpty {
+                        record.hrSamples = Self.downsampleToMinutes(samples)
+                    }
+                    record.hrSyncedAt = syncStamp
+                    days[key] = record
+                    
+                case .failure(let error):
+                    log.append(SyncLogEntry(metric: "Herzfrequenz", detail: "\(key): \(Self.describe(error))", isError: true))
+                }
+                
+                if index < keysToLoad.count {
+                    let nextKey = keysToLoad[index]
+                    index += 1
+                    let dayStart = DayKey.date(from: nextKey)!
+                    let dayEnd = min(dayStart.addingTimeInterval(24 * 3600), windowEnd)
+                    
+                    group.addTask {
+                        do {
+                            let samples = try await client.fetchSamples(
+                                type: "heart-rate",
+                                payloadKey: "heartRate",
+                                valueKeys: ["beatsPerMinute", "bpm", "value"],
+                                start: dayStart,
+                                end: dayEnd
+                            )
+                            return (nextKey, .success(samples))
+                        } catch {
+                            return (nextKey, .failure(error))
+                        }
+                    }
+                }
+            }
+        }
+        
+        let successCount = keysToLoad.count - log.count
+        if successCount > 0 {
+            log.append(SyncLogEntry(metric: "Herzfrequenz", detail: "\(successCount) Tage Intraday parallel geladen"))
+        }
+        
+        return SyncOutcome(updatedDays: days, log: log, profile: nil)
     }
 
     // MARK: - Helfer

@@ -181,6 +181,7 @@ public struct DayRecord: Codable, Sendable {
     public var hrSamples: [HRSample]
 
     public var syncedAt: Date?
+    public var hrSyncedAt: Date?
 
     public init(date: String) {
         self.date = date
@@ -204,6 +205,15 @@ public struct DayRecord: Codable, Sendable {
 
     public var totalSleepMinutes: Double {
         sleepSessions.reduce(0) { $0 + $1.minutesAsleep }
+    }
+
+    // New: DayRecord.hrSyncedAt timestamp
+    // A day is "complete" if we synced AFTER midnight of that day
+    // → follow-up syncs only load today
+    public static func isIntradayComplete(_ record: DayRecord?, dayKey: String) -> Bool {
+        guard let record = record, let syncedAt = record.hrSyncedAt else { return false }
+        guard let dayEnd = DayKey.date(from: dayKey)?.addingTimeInterval(24 * 3600) else { return false }
+        return syncedAt >= dayEnd
     }
 }
 
